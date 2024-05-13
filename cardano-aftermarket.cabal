@@ -1,0 +1,158 @@
+cabal-version:      3.0
+name:               cardano-aftermarket
+version:            1.0.0.0
+
+synopsis: A distributed Cardano P2P aftermarket for financial assets.
+license:            Apache-2.0
+license-file:       LICENSE
+author:             fallen-icarus
+maintainer:         modern.daidalos+github@gmail.com
+copyright: 2024 fallen-icarus
+extra-doc-files:    CHANGELOG.md
+extra-source-files:
+    aiken/plutus.json
+
+common lang
+  build-depends: base
+  default-language: GHC2021
+  ghc-options: -Wall -Wredundant-constraints
+  default-extensions:
+    OverloadedLabels
+    OverloadedStrings
+    RecordWildCards
+
+common internals
+  build-depends:
+      cardano-api
+    , plutus-ledger
+    , plutus-ledger-api
+    , plutus-tx
+    , plutus-core
+    , plutus-script-utils
+    , containers
+    , aeson
+    , text
+    , bytestring
+    , prettyprinter
+    , relude
+    , optics-core
+
+library
+  import: 
+      lang
+    , internals
+  exposed-modules: 
+      CardanoAftermarket
+    , CardanoAftermarket.Blueprints
+    , CardanoAftermarket.Types
+    , CardanoAftermarket.Utils
+  build-depends:
+      serialise
+    , file-embed
+    , base16-bytestring
+    , optics-th
+    , cardano-loans
+    , microlens
+  hs-source-dirs: src
+
+test-suite cardano-aftermarket-tests
+  import: 
+      lang
+    , internals
+  type: exitcode-stdio-1.0
+  main-is: Test.hs
+  hs-source-dirs: test
+  other-modules:
+      Test.AuctionUTxOs
+    , Test.AuctionUTxOs.CloseAuctionUTxOs
+    , Test.AuctionUTxOs.CloseAuctionUTxOs.Benchmarks
+    , Test.AuctionUTxOs.CloseAuctionUTxOs.Failures
+    , Test.AuctionUTxOs.CloseAuctionUTxOs.Regressions
+    , Test.AuctionUTxOs.CreateAuctionUTxOs
+    , Test.AuctionUTxOs.CreateAuctionUTxOs.Benchmarks
+    , Test.AuctionUTxOs.CreateAuctionUTxOs.Failures
+    , Test.AuctionUTxOs.CreateAuctionUTxOs.Regressions
+    , Test.AuctionUTxOs.UpdateAuctionUTxOs
+    , Test.AuctionUTxOs.UpdateAuctionUTxOs.Benchmarks
+    , Test.AuctionUTxOs.UpdateAuctionUTxOs.Failures
+    , Test.AuctionUTxOs.UpdateAuctionUTxOs.Regressions
+    , Test.Beacons
+    , Test.BidUTxOs
+    , Test.BidUTxOs.AcceptBidUTxOs
+    , Test.BidUTxOs.AcceptBidUTxOs.Benchmarks
+    , Test.BidUTxOs.AcceptBidUTxOs.Failures
+    , Test.BidUTxOs.AcceptBidUTxOs.Regressions
+    , Test.BidUTxOs.CloseBidUTxOs
+    , Test.BidUTxOs.CloseBidUTxOs.Benchmarks
+    , Test.BidUTxOs.CloseBidUTxOs.Failures
+    , Test.BidUTxOs.CloseBidUTxOs.Regressions
+    , Test.BidUTxOs.CreateBidUTxOs
+    , Test.BidUTxOs.CreateBidUTxOs.Benchmarks
+    , Test.BidUTxOs.CreateBidUTxOs.Failures
+    , Test.BidUTxOs.CreateBidUTxOs.Regressions
+    , Test.BidUTxOs.UpdateBidUTxOs
+    , Test.BidUTxOs.UpdateBidUTxOs.Benchmarks
+    , Test.BidUTxOs.UpdateBidUTxOs.Failures
+    , Test.BidUTxOs.UpdateBidUTxOs.Regressions
+    , Test.Misc
+    , Test.Prelude
+    , Test.SpotUTxOs
+    , Test.SpotUTxOs.CloseSpotUTxOs
+    , Test.SpotUTxOs.CloseSpotUTxOs.Benchmarks
+    , Test.SpotUTxOs.CloseSpotUTxOs.Failures
+    , Test.SpotUTxOs.CloseSpotUTxOs.Regressions
+    , Test.SpotUTxOs.CreateSpotUTxOs
+    , Test.SpotUTxOs.CreateSpotUTxOs.Benchmarks
+    , Test.SpotUTxOs.CreateSpotUTxOs.Failures
+    , Test.SpotUTxOs.CreateSpotUTxOs.Regressions
+    , Test.SpotUTxOs.PurchaseSpotUTxOs
+    , Test.SpotUTxOs.PurchaseSpotUTxOs.Benchmarks
+    , Test.SpotUTxOs.PurchaseSpotUTxOs.Failures
+    , Test.SpotUTxOs.PurchaseSpotUTxOs.Regressions
+    , Test.SpotUTxOs.UpdateSpotUTxOs
+    , Test.SpotUTxOs.UpdateSpotUTxOs.Benchmarks
+    , Test.SpotUTxOs.UpdateSpotUTxOs.Failures
+    , Test.SpotUTxOs.UpdateSpotUTxOs.Regressions
+  build-depends:
+      cardano-aftermarket
+    , data-default
+    , tasty
+    , tasty-hunit
+    , mtl
+    , microlens
+    , cardano-node-emulator
+    , optics-extra
+
+executable cardano-aftermarket
+  import: 
+      lang
+    , internals
+  main-is: Main.hs
+  other-modules:
+      CLI.Data.ApiService
+    , CLI.Data.Asset
+    , CLI.Data.Bech32Address
+    , CLI.Data.Commands
+    , CLI.Data.Network
+    , CLI.Data.MarketUTxO
+    , CLI.Data.Output
+    , CLI.Data.PersonalUTxO
+    , CLI.Data.TxCBOR
+    , CLI.Parsers
+    , CLI.Query
+    , CLI.Query.Koios
+    , CLI.Run
+  build-depends:    
+      cardano-aftermarket
+    , cardano-addresses
+    , optparse-applicative
+    , servant
+    , servant-client
+    , http-client
+    , http-client-tls
+    , vector
+    , aeson-pretty
+    , prettyprinter-ansi-terminal
+  hs-source-dirs: app
+  default-extensions:
+    NoImplicitPrelude

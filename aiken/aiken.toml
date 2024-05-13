@@ -1,0 +1,14 @@
+name = "fallen-icarus/cardano-aftermarket"
+version = "0.0.0"
+license = "Apache-2.0"
+description = "Aiken contracts for project 'fallen-icarus/cardano-aftermarket'"
+
+[repository]
+user = "fallen-icarus"
+project = "cardano-aftermarket"
+platform = "github"
+
+[[dependencies]]
+name = "aiken-lang/stdlib"
+version = "1.8.0"
+source = "github"
