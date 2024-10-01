@@ -789,7 +789,7 @@ datumFailure6 = do
                 , mconcat $ flip map nftNames $ \name -> PV2.singleton nftPolicyId name 1
                 ]
             , outputDatum = OutputDatum $ toDatum $
-                datum & #paymentObserverHash .~ ""
+                datum & #aftermarketObserverHash .~ ""
             , outputReferenceScript = toReferenceScript Nothing
             }
       , referenceInputs = [beaconsRef]
@@ -1352,7 +1352,7 @@ tests =
       "Datum has wrong beacon id"
       datumFailure5
   , scriptMustFailWithError "datumFailure6"
-      "Datum has wrong payment observer hash"
+      "Datum has wrong aftermarket observer hash"
       datumFailure6
   , scriptMustFailWithError "datumFailure7"
       "NFTs cannot be protocol beacons"

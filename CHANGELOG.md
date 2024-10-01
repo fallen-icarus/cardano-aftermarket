@@ -1,5 +1,23 @@
 # Revision history for Cardano-Aftermarket
 
+## 2.0.0.0rc
+
+#### New Features
+
+Added another type of auction where the buyer can finalize the trade. This is required to enable
+certain DApp compositions. For example, cardano-loans requires the buyer of a bond to update the
+lender payment address in the same transaction as the purchase.
+
+The two types of auctions are:
+- Spot Auctions - auctions where the seller can immediately accept the bid and send the NFTs to the
+buyer. The seller is the one to submit the final transaction.
+- Claim Auctions - auctions where the seller will lock-up the NFTs with the chose bid UTxO and wait
+for the bidder to come claim them. Claiming them requires paying the seller the bid amount specified
+in the bid UTxO's datum. The bidder is the one to submit the final transaction. If the bidder does
+not claim the NFTs in the agreed upon amount of time, the seller can reclaim the NFTs, and also
+claim the bidder's deposit as compensation. Bidders can deliberately offer larger deposits to make
+their bids more enticing for sellers.
+
 ## 1.0.0.0rc
 
 #### Renamed

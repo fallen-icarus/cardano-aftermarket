@@ -5,6 +5,11 @@ All benchmarks were done using reference scripts and the cardano-node emulator
 too large to be used locally so it is required that reference scripts are used. The emulator uses
 the same parameters as the mainnet.
 
+> [!WARNING]
+> The transaction fee and collateral estimations are not accuration since the tests do not account
+> for the reference script sizes in the calculations. However, the maximum number of UTxOs that can be
+> processed in each scenario *is* accurate.
+
 ## Table of Contents 
 - [Required Deposits for Reference Scripts](#required-deposits-for-reference-scripts)
 - [Creating Spot UTxOs](#creating-spot-utxos)
@@ -14,22 +19,24 @@ the same parameters as the mainnet.
 - [Creating Auction UTxOs](#creating-auction-utxos)
 - [Closing Auction UTxOs](#closing-auction-utxos)
 - [Updating Auction UTxOs](#updating-auction-utxos)
-- [Creating Bid UTxOs](#creating-bid-utxos)
-- [Closing Bid UTxOs](#closing-bid-utxos)
-- [Updating Bid UTxOs](#updating-bid-utxos)
-- [Accepting Bid UTxOs](#accepting-bid-utxos)
+- [Creating SpotBid UTxOs](#creating-spotbid-utxos)
+- [Closing SpotBid UTxOs](#closing-spotbid-utxos)
+- [Updating SpotBid UTxOs](#updating-spotbid-utxos)
+- [Accepting SpotBid UTxOs](#accepting-spotbid-utxos)
+- [Creating ClaimBid UTxOs](#creating-claimbid-utxos)
+- [Closing ClaimBid UTxOs](#closing-claimbid-utxos)
+- [Updating ClaimBid UTxOs](#updating-claimbid-utxos)
+- [Accepting ClaimBid UTxOs](#accepting-claimbid-utxos)
+- [Claiming AcceptedBid UTxOs](#claiming-acceptedbid-utxos)
+- [Unlocking Unclaimed AcceptedBid UTxOs](#unlocking-unclaimed-acceptedbid-utxos)
 
 ## Required Deposits for Reference Scripts
 
 | Script | Deposit |
 |:------:|:-------:|
-| aftermarket spending script | 13 ADA |
-| beacon script | 30 ADA |
-| payment observer script | 25 ADA |
-
-It is recommended that users share reference scripts using something like
-[cardano-reference-scripts](https://github.com/fallen-icarus/cardano-reference-scripts) so that there
-is only one copy of each script stored on chain at a time.
+| aftermarket spending script | 20 ADA |
+| beacon script | 35 ADA |
+| aftermarket observer script | 43 ADA |
 
 ## Creating Spot UTxOs
 
@@ -170,9 +177,9 @@ Bottleneck: Memory
 Max: 22 Auctions  
 Bottleneck: Memory
 
-## Creating Bid UTxOs
+## Creating SpotBid UTxOs
 
-#### Each Bid UTxO uses three assets for the bid.
+#### Each SpotBid UTxO uses three assets for the bid.
 | Bids Created | Tx Fee | Req. Collateral |
 |:--:|:--:|:--:|
 | 1 | 0.280369 ADA | 0.420554 ADA |
@@ -185,9 +192,9 @@ Bottleneck: Memory
 Max: 21 Bids  
 Bottleneck: Memory
 
-## Closing Bid UTxOs
+## Closing SpotBid UTxOs
 
-#### Each Bid UTxO uses three assets for the bid.
+#### Each SpotBid UTxO uses three assets for the bid.
 | Bids Closed | Tx Fee | Req. Collateral |
 |:--:|:--:|:--:|
 | 1 | 0.206458 ADA | 0.309687 ADA |
@@ -202,9 +209,9 @@ Bottleneck: Memory
 Max: 31 Bids  
 Bottleneck: Memory
 
-## Updating Bid UTxOs
+## Updating SpotBid UTxOs
 
-#### Each Bid UTxO uses three assets for the bid. No beacons need to be changed.
+#### Each SpotBid UTxO uses three assets for the bid. No beacons need to be changed.
 | Bids Updated | Tx Fee | Req. Collateral |
 |:--:|:--:|:--:|
 | 1 | 0.290902 ADA | 0.436353 ADA |
@@ -215,7 +222,7 @@ Bottleneck: Memory
 Max: 14 Bids  
 Bottleneck: Memory
 
-#### Each Bid UTxO uses three assets for the bid. The Bids are changed to a new BidderId.
+#### Each SpotBid UTxO uses three assets for the bid. The Bids are changed to a new BidderId.
 | Bids Updated | Tx Fee | Req. Collateral |
 |:--:|:--:|:--:|
 | 1 | 0.296901 ADA | 0.445352 ADA |
@@ -226,11 +233,11 @@ Bottleneck: Memory
 Max: 14 Bids  
 Bottleneck: Memory
 
-## Accepting Bid UTxOs
+## Accepting SpotBid UTxOs
 
 If the associated Auction UTxOs are closed separately, throughtput could double.
 
-#### Each Bid UTxO uses three assets for the bid. The associated Auction UTxOs were closed in the same transaction.
+#### Each SpotBid UTxO uses three assets for the bid. The associated Auction UTxOs were closed in the same transaction.
 | Bids Accepted | Tx Fee | Req. Collateral |
 |:--:|:--:|:--:|
 | 1 | 0.293522 ADA | 0.440283 ADA |
@@ -245,4 +252,113 @@ If the associated Auction UTxOs are closed separately, throughtput could double.
 | 10 | 1.485366 ADA | 2.228049 ADA |
 
 Max: 10 Bids  
+Bottleneck: Memory
+
+## Creating ClaimBid UTxOs
+
+#### Each ClaimBid UTxO uses three assets for the bid.
+| Bids Created | Tx Fee | Req. Collateral |
+|:--:|:--:|:--:|
+| 1 | 0.257597 ADA | 0.386396 ADA |
+| 5 | 0.521586 ADA | 0.782379 ADA |
+| 10 | 0.851737 ADA | 1.277606 ADA |
+| 15 | 1.181888 ADA | 1.772832 ADA |
+| 20 | 1.512039 ADA | 2.268059 ADA |
+| 25 | 1.842542 ADA | 2.763813 ADA |
+| 27 | 1.974603 ADA | 2.961905 ADA |
+
+Max: 27 Bids  
+Bottleneck: Memory
+
+## Closing Claim UTxOs
+
+#### Each Claim UTxO uses three assets for the bid.
+| Bids Closed | Tx Fee | Req. Collateral |
+|:--:|:--:|:--:|
+| 1 | 0.206458 ADA | 0.309687 ADA |
+| 5 | 0.301127 ADA | 0.451691 ADA |
+| 10 | 0.462752 ADA | 0.694128 ADA |
+| 15 | 0.672200 ADA | 1.008300 ADA |
+| 20 | 0.929910 ADA | 1.394865 ADA |
+| 25 | 1.236015 ADA | 1.854023 ADA |
+| 30 | 1.587071 ADA | 2.380607 ADA |
+| 31 | 1.663468 ADA | 2.495202 ADA |
+
+Max: 31 Bids  
+Bottleneck: Memory
+
+## Updating ClaimBid UTxOs
+
+#### Each ClaimBid UTxO uses three assets for the bid. No beacons need to be changed.
+| Bids Updated | Tx Fee | Req. Collateral |
+|:--:|:--:|:--:|
+| 1 | 0.290902 ADA | 0.436353 ADA |
+| 5 | 0.715437 ADA | 1.073156 ADA |
+| 10 | 1.289516 ADA | 1.934274 ADA |
+| 15 | 1.634585 ADA | 2.451878 ADA |
+| 16 | 1.746029 ADA | 2.619044 ADA |
+
+Max: 16 Bids  
+Bottleneck: Memory
+
+#### Each ClaimBid UTxO uses three assets for the bid. The Bids are changed to a new BidderId.
+| Bids Updated | Tx Fee | Req. Collateral |
+|:--:|:--:|:--:|
+| 1 | 0.296901 ADA | 0.445352 ADA |
+| 5 | 0.713880 ADA | 1.070820 ADA |
+| 15 | 1.278513 ADA | 1.917770 ADA |
+| 16 | 1.756974 ADA | 2.635461 ADA |
+
+Max: 16 Bids  
+Bottleneck: Memory
+
+## Accepting ClaimBid UTxOs
+
+If the associated Auction UTxOs are closed separately, throughtput could double.
+
+#### Each ClaimBid UTxO uses three assets for the bid. The associated Auction UTxOs were closed in the same transaction.
+| Bids Accepted | Tx Fee | Req. Collateral |
+|:--:|:--:|:--:|
+| 1 | 0.293522 ADA | 0.440283 ADA |
+| 2 | 0.394616 ADA | 0.591924 ADA |
+| 3 | 0.503474 ADA | 0.755211 ADA |
+| 4 | 0.620186 ADA | 0.930279 ADA |
+| 5 | 0.744750 ADA | 1.117125 ADA |
+| 6 | 0.877168 ADA | 1.315752 ADA |
+| 7 | 1.017438 ADA | 1.526157 ADA |
+| 8 | 1.165561 ADA | 1.748342 ADA |
+| 9 | 1.321537 ADA | 1.982306 ADA |
+| 10 | 1.485366 ADA | 2.228049 ADA |
+| 11 | 1.837718 ADA | 2.756577 ADA |
+
+Max: 11 Bids  
+Bottleneck: Memory
+
+## Claiming AcceptedBid UTxOs
+
+#### Each AcceptedBid UTxO uses three assets for the bid.
+| Bids Accepted | Tx Fee | Req. Collateral |
+|:--:|:--:|:--:|
+| 1 | 0.280867 ADA | 0.421301 ADA |
+| 5 | 0.546612 ADA | 0.819918 ADA |
+| 10 | 0.915911 ADA | 1.373867 ADA |
+| 15 | 1.326208 ADA | 1.989312 ADA |
+| 19 | 1.684358 ADA | 2.526537 ADA |
+
+Max: 19 Bids  
+Bottleneck: Memory
+
+## Unlocking Unclaimed AcceptedBid UTxOs
+
+#### Each AcceptedBid UTxO uses three assets for the bid.
+| Bids Accepted | Tx Fee | Req. Collateral |
+|:--:|:--:|:--:|
+| 1 | 0.246290 ADA | 0.369435 ADA |
+| 5 | 0.431081 ADA | 0.646622 ADA |
+| 10 | 0.705150 ADA | 1.057725 ADA |
+| 15 | 1.027086 ADA | 1.540629 ADA |
+| 20 | 1.396888 ADA | 2.095332 ADA |
+| 21 | 1.474370 ADA | 2.211555 ADA |
+
+Max: 21 Bids  
 Bottleneck: Memory

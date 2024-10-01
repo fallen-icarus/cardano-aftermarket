@@ -9,6 +9,7 @@ module CLI.Query
   , runQuerySpots
   , runQueryAuctions
   , runQueryBids
+  , runQuerySpecificMarketUTxO
   ) where
 
 import Relude
@@ -141,3 +142,15 @@ runQueryBids network api nftPolicy mSellerAddr mBidderCred = do
     (Mainnet,Koios) -> do
       let env = mkClientEnv manager' (BaseUrl Https "api.koios.rest" 443 "api/v1")
       runClientM (Koios.queryBids nftPolicy mSellerAddr mBidderCred) env
+
+runQuerySpecificMarketUTxO :: Network -> ApiService -> TxOutRef -> IO [MarketUTxO]
+runQuerySpecificMarketUTxO network api outRef = do
+  manager' <- newManager tlsManagerSettings
+  either throw return =<< case (network,api) of
+    (PreProdTestnet,Koios) -> do
+      let env = mkClientEnv manager' (BaseUrl Https "preprod.koios.rest" 443 "api/v1")
+      runClientM (Koios.querySpecificMarketUTxO outRef) env
+    (Mainnet,Koios) -> do
+      let env = mkClientEnv manager' (BaseUrl Https "api.koios.rest" 443 "api/v1")
+      runClientM (Koios.querySpecificMarketUTxO outRef) env
+

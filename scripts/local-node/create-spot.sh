@@ -40,7 +40,7 @@ cardano-aftermarket datums spot \
   --nft-name $nftName1 \
   --nft-name $nftName2 \
   --payment-address "$sellerPersonalAddr" \
-  --deposit $saleDeposit \
+  --seller-deposit $saleDeposit \
   --price '10000000 lovelace' \
   --out-file $spotDatumFile
 
@@ -65,13 +65,12 @@ spotBeacon="${beaconPolicyId}.${spotBeaconName}"
 policyBeacon="${beaconPolicyId}.${policyBeaconName}"
 
 ## Create and submit the transaction.
-cardano-cli transaction build \
-  --tx-in dabfb2819e70b22485eccacfc838b5decbcba2df9b5d19afe5cd0b90bc6e8679#0 \
-  --tx-in 7a84bc049ca8f10fe016bcf4a79aa15ca01117218a5cd721123257c395832b1a#1 \
+cardano-cli conway transaction build \
+  --tx-in c543a5bd46d6e0edfc145f97641100b36d40be15d19c669f07f2ccb2bd76a0fd#4 \
   --tx-out "${sellerAddr} + ${saleDeposit} lovelace + 1 ${spotBeacon} + 1 ${policyBeacon} + 1 ${nftPolicyId}.${nftName1} + 1 ${nftPolicyId}.${nftName2}" \
   --tx-out-inline-datum-file $spotDatumFile \
   --mint "1 ${spotBeacon} + 1 ${policyBeacon}" \
-  --mint-tx-in-reference e6573f7aef914f388bf792e28fdb6af3d2acde3e7b1070484044fb84bee3fa6d#0 \
+  --mint-tx-in-reference d725ebf0adcc114251b993389032e4d67bfbdcaeaeb368edf540877d86562167#0 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --policy-id $beaconPolicyId \
@@ -86,6 +85,6 @@ cardano-cli transaction sign \
   --testnet-magic 1 \
   --out-file "${tmpDir}tx.signed"
 
-cardano-cli transaction submit \
-  --testnet-magic 1 \
+cardano-aftermarket submit \
+  --testnet \
   --tx-file "${tmpDir}tx.signed"

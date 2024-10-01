@@ -33,6 +33,10 @@ module CardanoAftermarket.Utils
   , wrapVersionedLedgerScript
   , toCardanoApiScript
   , UPLC.serialisedSize
+  , slotToPOSIXTime
+  , posixTimeToSlot
+  , preprodConfig
+  , mainnetConfig
 
   -- * Re-exports
   , applyArguments
@@ -68,6 +72,7 @@ import qualified Data.ByteString.Base16 as Base16
 import Relude (Text,toShort,encodeUtf8,maybeToRight)
 import Data.Ratio (numerator,denominator)
 
+import qualified PlutusTx.Prelude as PlutusTx
 import qualified PlutusCore.MkPlc as PLC
 import qualified UntypedPlutusCore as UPLC
 import qualified Cardano.Api as Api 
@@ -177,6 +182,52 @@ readScriptHash :: String -> Either String PV2.ScriptHash
 readScriptHash s = case fromHex $ fromString s of
   Right (PV2.LedgerBytes bytes') -> Right $ PV2.ScriptHash bytes'
   Left msg                   -> Left $ show msg
+
+-------------------------------------------------
+-- Time
+-------------------------------------------------
+-- | Datatype to configure the length (ms) of one slot and the beginning of the
+-- first slot.
+data SlotConfig = SlotConfig
+  { scSlotLength :: !Integer
+  -- ^ Length (number of milliseconds) of one slot
+  , scSlotZeroTime :: !PV2.POSIXTime
+  -- ^ Beginning of slot 0 (in milliseconds)
+  } deriving (Eq, Show)
+
+-- | Get the starting 'POSIXTime' of a 'Slot' given a 'SlotConfig'.
+slotToBeginPOSIXTime :: SlotConfig -> L.Slot -> PV2.POSIXTime
+slotToBeginPOSIXTime SlotConfig{scSlotLength, scSlotZeroTime} (L.Slot n) =
+  let msAfterBegin = n * scSlotLength
+   in PV2.POSIXTime $ PV2.getPOSIXTime scSlotZeroTime + msAfterBegin
+
+-- | Convert a 'POSIXTime' to 'Slot' given a 'SlotConfig'.
+posixTimeToEnclosingSlot :: SlotConfig -> PV2.POSIXTime -> L.Slot
+posixTimeToEnclosingSlot SlotConfig{scSlotLength, scSlotZeroTime} (PV2.POSIXTime t) =
+  let timePassed = t - PV2.getPOSIXTime scSlotZeroTime
+      slotsPassed = PlutusTx.divide timePassed scSlotLength
+   in L.Slot slotsPassed
+
+slotToPOSIXTime :: SlotConfig -> L.Slot -> PV2.POSIXTime
+slotToPOSIXTime = slotToBeginPOSIXTime
+
+posixTimeToSlot :: SlotConfig -> PV2.POSIXTime -> L.Slot
+posixTimeToSlot = posixTimeToEnclosingSlot
+
+-- | The preproduction testnet has not always had 1 second slots. Therefore, the default settings
+-- for SlotConfig are not usable on the testnet. To fix this, the proper SlotConfig must be
+-- normalized to "pretend" that the testnet has always used 1 second slot intervals.
+--
+-- The normalization is done by taking a slot time and subtracting the slot number from it.
+-- For example, slot 56919374 occurred at 1712602574 POSIXTime. So subtracting the slot number 
+-- from the time yields the normalized 0 time. The final number needs to be converted to
+-- milliseconds.
+preprodConfig :: SlotConfig
+preprodConfig = SlotConfig 1000 $ PV2.POSIXTime $ (1712603045 - 56919845) * 1000
+
+-- | The mainnet config must also be normalized.
+mainnetConfig :: SlotConfig
+mainnetConfig = SlotConfig 1000 $ PV2.POSIXTime $ (1712661664 - 121095373) * 1000
 
 -------------------------------------------------
 -- Misc

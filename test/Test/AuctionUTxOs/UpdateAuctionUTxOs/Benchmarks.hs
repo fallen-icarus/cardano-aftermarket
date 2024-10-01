@@ -249,9 +249,9 @@ benchTest2 number = do
 -- | A `TestTree` containing all benchmark scenarios for updating Auction UTxOs.
 tests :: [TestTree]
 tests =
-  [ mustSucceed "benchTest1" $ benchTest1 24
-  , mustSucceed "benchTest2" $ benchTest2 22
+  [ mustSucceed "benchTest1" $ benchTest1 25
+  , mustSucceed "benchTest2" $ benchTest2 21
 
-  , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 25
-  , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 23
+  , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 26
+  , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 22
   ]

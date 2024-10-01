@@ -67,7 +67,9 @@ source-repository-package
       quickcheck-contractmodel
       quickcheck-threatmodel
 
+-- Get the proxy script from cardano-loans.
 source-repository-package
     type: git
     location: https://github.com/fallen-icarus/cardano-loans
-    tag: 07a2fb6
+    -- v2.0.0.0rc
+    tag: f44266b8ae567fa4803421a626519d44ed48955a

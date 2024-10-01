@@ -115,11 +115,11 @@ benchTest1 number = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
       , outputs = flip map spotUTxOs $ \(ref, Just SpotDatum{salePrice=Prices salePrice,..}) ->
@@ -132,7 +132,7 @@ benchTest1 number = do
             , outputDatum = OutputDatum $ toDatum $ PaymentDatum (BeaconId beaconCurrencySymbol,ref)
             , outputReferenceScript = toReferenceScript Nothing
             }
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       }
 
 -- | Purchase multiple valid Spot UTxOs, each one for different nfts. The Spot UTxOs each have 
@@ -233,11 +233,11 @@ benchTest2 number = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
       , outputs = flip map spotUTxOs $ \(ref, Just SpotDatum{salePrice=Prices salePrice,..}) ->
@@ -250,7 +250,7 @@ benchTest2 number = do
             , outputDatum = OutputDatum $ toDatum $ PaymentDatum (BeaconId beaconCurrencySymbol,ref)
             , outputReferenceScript = toReferenceScript Nothing
             }
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       }
 
 -------------------------------------------------
@@ -260,8 +260,8 @@ benchTest2 number = do
 tests :: [TestTree]
 tests =
   [ mustSucceed "benchTest1" $ benchTest1 22
-  , mustSucceed "benchTest2" $ benchTest2 22
+  , mustSucceed "benchTest2" $ benchTest2 21
 
   , mustExceedTxLimits "perfIncreaseTest1" $ benchTest1 23
-  , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 23
+  , mustExceedTxLimits "perfIncreaseTest2" $ benchTest2 22
   ]

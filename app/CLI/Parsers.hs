@@ -27,6 +27,8 @@ parseCommand = hsubparser $ mconcat
       info parseCreateRedeemer $ progDesc "Create a redeemer for the protocol."
   , command "beacon-name" $
       info parseBeaconName $ progDesc "Calculate a beacon policy id or asset name."
+  , command "convert-time" $
+      info pConvertTime $ progDesc "Convert POSIXTime <--> Slot."
   , command "query" $
       info parseQuery $ progDesc "Query the blockchain."
   , command "submit" $
@@ -46,7 +48,7 @@ parseExportScript =
   where
     pScript :: Parser Script
     pScript = pBeaconScript
-          <|> pPaymentScript
+          <|> pObserverScript
           <|> pMarketScript
           <|> pProxyScript
 
@@ -56,10 +58,10 @@ parseExportScript =
       <> help "Export the beacon script."
       )
 
-    pPaymentScript :: Parser Script
-    pPaymentScript = flag' PaymentObserverScript
-      (  long "payment-script"
-      <> help "Export the payment observer script."
+    pObserverScript :: Parser Script
+    pObserverScript = flag' MarketObserverScript
+      (  long "observer-script"
+      <> help "Export the market observer script."
       )
 
     pMarketScript :: Parser Script
@@ -83,8 +85,12 @@ parseCreateDatum = hsubparser $ mconcat
       info pCreateNewSpotInfo $ progDesc "Create a SpotDatum."
   , command "auction" $
       info pCreateNewAuctionInfo $ progDesc "Create an AuctionDatum."
-  , command "bid" $
-      info pCreateNewBidInfo $ progDesc "Create a BidDatum."
+  , command "spot-bid" $
+      info pCreateNewSpotBidInfo $ progDesc "Create a SpotBidDatum."
+  , command "claim-bid" $
+      info pCreateNewClaimBidInfo $ progDesc "Create a ClaimBidDatum."
+  , command "accepted-bid" $
+      info pCreateAcceptedBidDatum $ progDesc "Create an AcceptedBidDatum."
   , command "payment" $
       info pCreatePaymentDatum $ progDesc "Create a PaymentDatum."
   ]
@@ -107,7 +113,7 @@ pCreateNewSpotInfo =
         <$> pNftPolicyId
         <*> some pNftName
         <*> pPaymentAddress
-        <*> pDeposit
+        <*> pDeposit "seller"
         <*> some pPrice
 
 pCreateNewAuctionInfo :: Parser Command
@@ -123,21 +129,81 @@ pCreateNewAuctionInfo =
         <*> some pNftName
         <*> some pPrice
 
-pCreateNewBidInfo :: Parser Command
-pCreateNewBidInfo =
+pCreateNewSpotBidInfo :: Parser Command
+pCreateNewSpotBidInfo =
     CreateDatum
-      <$> pNewBidInfo
+      <$> pNewSpotBidInfo
       <*> pOutputFile
   where
-    pNewBidInfo :: Parser NewDatum
-    pNewBidInfo =
-      fmap NewBidDatum $ NewBidInfo
+    pNewSpotBidInfo :: Parser NewDatum
+    pNewSpotBidInfo =
+      fmap NewSpotBidDatum $ NewSpotBidInfo
         <$> pNftPolicyId
         <*> pBidderCredential
         <*> some pNftName
         <*> pPaymentAddress
-        <*> pDeposit
+        <*> pDeposit "bidder"
         <*> some pPrice
+
+pCreateNewClaimBidInfo :: Parser Command
+pCreateNewClaimBidInfo =
+    CreateDatum
+      <$> pNewClaimBidInfo
+      <*> pOutputFile
+  where
+    pNewClaimBidInfo :: Parser NewDatum
+    pNewClaimBidInfo =
+      fmap NewClaimBidDatum $ NewClaimBidInfo
+        <$> pNftPolicyId
+        <*> pBidderCredential
+        <*> some pNftName
+        <*> pDeposit "bidder"
+        <*> some pPrice
+        <*> pBidExpiration
+        <*> pClaimExpiration
+
+pCreateAcceptedBidDatum :: Parser Command
+pCreateAcceptedBidDatum = hsubparser $ mconcat
+    [ command "manual" $
+        info pCreateAcceptedBidManual $ 
+          progDesc "Create an AcceptedBidDatum manually."
+    , command "auto" $
+        info pCreateAcceptedBidAuto $ 
+          progDesc "Create an AcceptedBidDatum by looking up the ClaimBid UTxO."
+    ]
+
+pCreateAcceptedBidManual :: Parser Command
+pCreateAcceptedBidManual =
+    CreateDatum
+      <$> pNewAcceptedBidInfo
+      <*> pOutputFile
+  where
+    pNewAcceptedBidInfo :: Parser NewDatum
+    pNewAcceptedBidInfo =
+      fmap NewAcceptedBidDatumManual $ NewAcceptedBidInfo
+        <$> pNftPolicyId
+        <*> pBidderCredential
+        <*> some pNftName
+        <*> pDeposit "bidder"
+        <*> pDeposit "seller"
+        <*> some pPrice
+        <*> pClaimExpiration
+        <*> pPaymentAddress
+
+pCreateAcceptedBidAuto :: Parser Command
+pCreateAcceptedBidAuto =
+    CreateDatum
+      <$> pNewAcceptedBid
+      <*> pOutputFile
+  where
+    pNewAcceptedBid :: Parser NewDatum
+    pNewAcceptedBid =
+      NewAcceptedBidDatumAuto
+        <$> pNetwork
+        <*> pApiService
+        <*> pBidRef
+        <*> pDeposit "seller"
+        <*> pPaymentAddress
 
 -------------------------------------------------
 -- CreateRedeemer Parser
@@ -148,8 +214,8 @@ parseCreateRedeemer = hsubparser $ mconcat
         info pBeaconRedeemer $ progDesc "Create a redeemer for the beacon script."
     , command "market-script" $
         info pMarketRedeemer $ progDesc "Create a redeemer for the aftermarket script."
-    , command "payment-script" $
-        info pPaymentObserverRedeemer $ progDesc "Create a redeemer for the payment observer script."
+    , command "observer-script" $
+        info pMarketObserverRedeemer $ progDesc "Create a redeemer for the observer script."
     ]
 
 pBeaconRedeemer :: Parser Command
@@ -181,26 +247,26 @@ pBeaconRedeemer = hsubparser $ mconcat
         <$> pure (NewBeaconRedeemer RegisterBeaconsScript)
         <*> pOutputFile
         
-pPaymentObserverRedeemer :: Parser Command
-pPaymentObserverRedeemer = hsubparser $ mconcat
-    [ command "observe-payment" $
-        info pObservePayment $ 
-          progDesc "Create the redeemer for observing a payment."
+pMarketObserverRedeemer :: Parser Command
+pMarketObserverRedeemer = hsubparser $ mconcat
+    [ command "observe" $
+        info pObserveMarket $ 
+          progDesc "Create the redeemer for observing a market action."
     , command "register" $
-        info pRegisterPaymentObserverScript $ 
+        info pRegisterMarketObserverScript $ 
           progDesc "Create the redeemer for registering the script."
     ]
   where
-    pObservePayment :: Parser Command
-    pObservePayment = 
+    pObserveMarket :: Parser Command
+    pObserveMarket = 
       CreateRedeemer 
-        <$> pure (NewPaymentObserverRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol)
+        <$> pure (NewMarketObserverRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol)
         <*> pOutputFile
 
-    pRegisterPaymentObserverScript :: Parser Command
-    pRegisterPaymentObserverScript =
+    pRegisterMarketObserverScript :: Parser Command
+    pRegisterMarketObserverScript =
       CreateRedeemer 
-        <$> pure (NewPaymentObserverRedeemer RegisterPaymentObserverScript)
+        <$> pure (NewMarketObserverRedeemer RegisterAftermarketObserverScript)
         <*> pOutputFile
 
 pMarketRedeemer :: Parser Command
@@ -214,9 +280,18 @@ pMarketRedeemer = hsubparser $ mconcat
     , command "purchase-spot" $
         info pPurchaseSpot $ 
           progDesc "Create the redeemer for purchasing a Spot UTxO."
-    , command "accept-bid" $
-        info pAcceptBid $ 
-          progDesc "Create the redeemer for accepting a Bid UTxO."
+    , command "accept-spot-bid" $
+        info pAcceptSpotBid $ 
+          progDesc "Create the redeemer for accepting a SpotBid UTxO."
+    , command "accept-claim-bid" $
+        info pAcceptClaimBid $ 
+          progDesc "Create the redeemer for accepting a ClaimBid UTxO."
+    , command "claim-accepted-bid" $
+        info pClaimAcceptedBid $ 
+          progDesc "Create the redeemer for claiming an AcceptedBid UTxO."
+    , command "unlock" $
+        info pUnlock $ 
+          progDesc "Create the redeemer for unlocking an unclaimed AcceptedBid UTxO."
     ]
   where
     pCloseOrUpdateSellerUTxO :: Parser Command
@@ -237,10 +312,28 @@ pMarketRedeemer = hsubparser $ mconcat
         <$> pure (NewMarketRedeemer PurchaseSpot)
         <*> pOutputFile
 
-    pAcceptBid :: Parser Command
-    pAcceptBid = 
+    pAcceptSpotBid :: Parser Command
+    pAcceptSpotBid = 
       CreateRedeemer
-        <$> pure (NewMarketRedeemer AcceptBid)
+        <$> pure (NewMarketRedeemer AcceptSpotBid)
+        <*> pOutputFile
+
+    pAcceptClaimBid :: Parser Command
+    pAcceptClaimBid = 
+      CreateRedeemer
+        <$> (NewMarketRedeemer <$> (AcceptClaimBid <$> pDeposit "seller" <*> pPaymentAddress))
+        <*> pOutputFile
+
+    pClaimAcceptedBid :: Parser Command
+    pClaimAcceptedBid = 
+      CreateRedeemer
+        <$> pure (NewMarketRedeemer ClaimAcceptedBid)
+        <*> pOutputFile
+
+    pUnlock :: Parser Command
+    pUnlock = 
+      CreateRedeemer
+        <$> pure (NewMarketRedeemer UnlockUnclaimedAcceptedBid)
         <*> pOutputFile
 
 -------------------------------------------------
@@ -285,6 +378,26 @@ parseBeaconName = hsubparser $ mconcat
       BeaconName 
         <$> (PolicyBeaconName <$> pNftPolicyId) 
         <*> pOutput
+
+-------------------------------------------------
+-- ConvertTime Parser
+-------------------------------------------------
+pConvertTime :: Parser Command
+pConvertTime = ConvertTime <$> (pPOSIXTime <|> pSlot) <*> pNetwork
+  where
+    pPOSIXTime :: Parser ConvertTime
+    pPOSIXTime = POSIXTimeToSlot . POSIXTime <$> option auto
+      (  long "posix-time"
+      <> metavar "INT"
+      <> help "Convert POSIX time (in milliseconds) to slot number."
+      )
+
+    pSlot :: Parser ConvertTime
+    pSlot = SlotToPOSIXTime . Slot <$> option auto
+      (  long "slot"
+      <> metavar "INT"
+      <> help "Convert slot number to POSIX time."
+      )
 
 -------------------------------------------------
 -- Submit Parser
@@ -439,14 +552,14 @@ pPaymentAddress =
   option (maybeReader $ rightToMaybe . paymentAddressToPlutusAddress . PaymentAddress . toText)
     (  long "payment-address"
     <> metavar "BECH32"
-    <> help "The address where payments must go."
+    <> help "The address where the payment must go."
     )
 
-pDeposit :: Parser Integer
-pDeposit = option auto
-  (  long "deposit"
+pDeposit :: String -> Parser Integer
+pDeposit user = option auto
+  (  long (user <> "-deposit")
   <> metavar "INT"
-  <> help "The amount used for the minUTxOValue."
+  <> help ("The amount used by the " <> user <> " for the minUTxOValue.")
   )
 
 pPrice :: Parser (Asset,Integer)
@@ -513,3 +626,31 @@ pBech32Address = PaymentAddress <$> strOption
   <> metavar "BECH32"
   <> help "The target address."
   )
+
+pBidRef :: Parser TxOutRef
+pBidRef = option (eitherReader readTxOutRef)
+  (  long "bid-ref"
+  <> metavar "STRING"
+  <> help "The output reference for the target bid 'tx_hash#index'."
+  )
+
+pBidExpiration :: Parser (Maybe POSIXTime)
+pBidExpiration = pNoExpiration <|> pExpiration
+  where
+    pNoExpiration = flag' Nothing
+      (  long "no-bid-expiration"
+      <> help "The bid does not expire."
+      )
+    pExpiration = Just . POSIXTime <$> option auto
+      (  long "bid-expiration"
+      <> metavar "TIME"
+      <> help "The expiration time for the bid in POSIX time (milliseconds)."
+      )
+
+pClaimExpiration :: Parser POSIXTime
+pClaimExpiration = POSIXTime <$> option auto
+  (  long "claim-expiration"
+  <> metavar "TIME"
+  <> help "The expiration time for the claim period in POSIX time (milliseconds)."
+  )
+

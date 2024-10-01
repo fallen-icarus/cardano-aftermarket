@@ -16,7 +16,7 @@ import Test.Prelude
 -------------------------------------------------
 -- Misc Regression Tests
 -------------------------------------------------
--- | Accept a single valid Bid UTxO and close the associated Auction UTxO in the same transaction.
+-- | Accept a single valid SpotBid UTxO and close the associated Auction UTxO in the same transaction.
 regressionTest1 :: MonadEmulator m => m ()
 regressionTest1 = do
   let -- Seller Info
@@ -47,7 +47,7 @@ regressionTest1 = do
         }
 
       -- Bid Info
-      bidDatum = unsafeCreateBidDatum $ NewBidInfo
+      bidDatum = unsafeCreateSpotBidDatum $ NewSpotBidInfo
         { nftPolicyId = testTokenSymbol
         , bidderCredential = bidderCred
         , nftNames = 
@@ -95,7 +95,7 @@ regressionTest1 = do
     emptyTxParams
       { tokens =
           [ TokenMint
-              { mintTokens = flip concatMap [bidDatum] $ \BidDatum{..} ->
+              { mintTokens = flip concatMap [bidDatum] $ \SpotBidDatum{..} ->
                   [ ("Bid", 1)
                   , (unPolicyBeacon $ toPolicyBeacon nftPolicyId, 1)
                   , (unBidderId $ toBidderId bidderCredential, 1)
@@ -105,7 +105,7 @@ regressionTest1 = do
               , mintReference = Just beaconsRef
               }
           ]
-      , outputs = flip map [bidDatum] $ \datum@BidDatum{bid=Prices bid,..} ->
+      , outputs = flip map [bidDatum] $ \datum@SpotBidDatum{bid=Prices bid,..} ->
           Output
             { outputAddress = aftermarketAddress
             , outputValue = utxoValue (fromIntegral bidDeposit) $ mconcat
@@ -122,14 +122,14 @@ regressionTest1 = do
       , extraKeyWitnesses = [bidderPubKey]
       }
 
-  bidUTxOs <- filter (isJust . snd) <$> txOutRefsAndDatumsAtAddress @BidDatum aftermarketAddress
+  bidUTxOs <- filter (isJust . snd) <$> txOutRefsAndDatumsAtAddress @SpotBidDatum aftermarketAddress
   auctionUTxOs <- filter (isJust . snd) <$> txOutRefsAndDatumsAtAddress @AuctionDatum aftermarketAddress
 
   -- Try to accept the Bid UTxO.
   void $ transact sellerPersonalAddr [aftermarketAddress,refScriptAddress] [sellerPayPrivKey]
     emptyTxParams
       { tokens = mconcat
-          [ flip map bidUTxOs $ \(_, Just BidDatum{..}) -> 
+          [ flip map bidUTxOs $ \(_, Just SpotBidDatum{..}) -> 
               TokenMint
                 { mintTokens = 
                     [ ("Bid", -1)
@@ -157,17 +157,17 @@ regressionTest1 = do
                 { inputId = bidRef
                 , inputWitness = 
                     SpendWithPlutusReference aftermarketRef InlineDatum $ 
-                      toRedeemer AcceptBid
+                      toRedeemer AcceptSpotBid
                 }
           , flip map auctionUTxOs $ \(auctionRef,_) ->
               Input
                 { inputId = auctionRef
                 , inputWitness = 
                     SpendWithPlutusReference aftermarketRef InlineDatum $ 
-                      toRedeemer AcceptBid
+                      toRedeemer AcceptSpotBid
                 }
           ]
-      , outputs = flip map bidUTxOs $ \(ref, Just BidDatum{..}) ->
+      , outputs = flip map bidUTxOs $ \(ref, Just SpotBidDatum{..}) ->
           Output
             { outputAddress = toCardanoApiAddress paymentAddress
             , outputValue = utxoValue (fromIntegral bidDeposit) $ mconcat
@@ -179,18 +179,18 @@ regressionTest1 = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       , extraKeyWitnesses = [sellerPubKey]
       }
 
--- | Accept a single valid Bid UTxO and close the associated Spot UTxO in the same transaction.
+-- | Accept a single valid SpotBid UTxO and close the associated Spot UTxO in the same transaction.
 regressionTest2 :: MonadEmulator m => m ()
 regressionTest2 = do
   let -- Seller Info
@@ -223,7 +223,7 @@ regressionTest2 = do
         }
 
       -- Bid Info
-      bidDatum = unsafeCreateBidDatum $ NewBidInfo
+      bidDatum = unsafeCreateSpotBidDatum $ NewSpotBidInfo
         { nftPolicyId = testTokenSymbol
         , bidderCredential = bidderCred
         , nftNames = 
@@ -271,7 +271,7 @@ regressionTest2 = do
     emptyTxParams
       { tokens =
           [ TokenMint
-              { mintTokens = flip concatMap [bidDatum] $ \BidDatum{..} ->
+              { mintTokens = flip concatMap [bidDatum] $ \SpotBidDatum{..} ->
                   [ ("Bid", 1)
                   , (unPolicyBeacon $ toPolicyBeacon nftPolicyId, 1)
                   , (unBidderId $ toBidderId bidderCredential, 1)
@@ -281,7 +281,7 @@ regressionTest2 = do
               , mintReference = Just beaconsRef
               }
           ]
-      , outputs = flip map [bidDatum] $ \datum@BidDatum{bid=Prices bid,..} ->
+      , outputs = flip map [bidDatum] $ \datum@SpotBidDatum{bid=Prices bid,..} ->
           Output
             { outputAddress = aftermarketAddress
             , outputValue = utxoValue (fromIntegral bidDeposit) $ mconcat
@@ -298,14 +298,14 @@ regressionTest2 = do
       , extraKeyWitnesses = [bidderPubKey]
       }
 
-  bidUTxOs <- filter (isJust . snd) <$> txOutRefsAndDatumsAtAddress @BidDatum aftermarketAddress
+  bidUTxOs <- filter (isJust . snd) <$> txOutRefsAndDatumsAtAddress @SpotBidDatum aftermarketAddress
   spotUTxOs <- filter (isJust . snd) <$> txOutRefsAndDatumsAtAddress @SpotDatum aftermarketAddress
 
   -- Try to accept the Bid UTxO.
   void $ transact sellerPersonalAddr [aftermarketAddress,refScriptAddress] [sellerPayPrivKey]
     emptyTxParams
       { tokens = mconcat
-          [ flip map bidUTxOs $ \(_, Just BidDatum{..}) -> 
+          [ flip map bidUTxOs $ \(_, Just SpotBidDatum{..}) -> 
               TokenMint
                 { mintTokens = 
                     [ ("Bid", -1)
@@ -333,7 +333,7 @@ regressionTest2 = do
                 { inputId = bidRef
                 , inputWitness = 
                     SpendWithPlutusReference aftermarketRef InlineDatum $ 
-                      toRedeemer AcceptBid
+                      toRedeemer AcceptSpotBid
                 }
           , flip map spotUTxOs $ \(spotRef,_) ->
               Input
@@ -343,7 +343,7 @@ regressionTest2 = do
                       toRedeemer CloseOrUpdateSellerUTxO
                 }
           ]
-      , outputs = flip map bidUTxOs $ \(ref, Just BidDatum{..}) ->
+      , outputs = flip map bidUTxOs $ \(ref, Just SpotBidDatum{..}) ->
           Output
             { outputAddress = toCardanoApiAddress paymentAddress
             , outputValue = utxoValue (fromIntegral bidDeposit) $ mconcat
@@ -355,18 +355,18 @@ regressionTest2 = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       , extraKeyWitnesses = [sellerPubKey]
       }
 
--- | Accept a single valid Bid UTxO, close the associated Auction UTxO, and purchase a Spot UTxO in
+-- | Accept a single valid SpotBid UTxO, close the associated Auction UTxO, and purchase a Spot UTxO in
 -- the same transaction.
 regressionTest3 :: MonadEmulator m => m ()
 regressionTest3 = do
@@ -413,7 +413,7 @@ regressionTest3 = do
         }
 
       -- Bid Info
-      bidDatum = unsafeCreateBidDatum $ NewBidInfo
+      bidDatum = unsafeCreateSpotBidDatum $ NewSpotBidInfo
         { nftPolicyId = testTokenSymbol
         , bidderCredential = bidderCred
         , nftNames = 
@@ -462,7 +462,7 @@ regressionTest3 = do
     emptyTxParams
       { tokens =
           [ TokenMint
-              { mintTokens = flip concatMap [bidDatum] $ \BidDatum{..} ->
+              { mintTokens = flip concatMap [bidDatum] $ \SpotBidDatum{..} ->
                   [ ("Bid", 1)
                   , (unPolicyBeacon $ toPolicyBeacon nftPolicyId, 1)
                   , (unBidderId $ toBidderId bidderCredential, 1)
@@ -482,7 +482,7 @@ regressionTest3 = do
               }
           ]
       , outputs = mconcat
-          [ flip map [bidDatum] $ \datum@BidDatum{bid=Prices bid,..} ->
+          [ flip map [bidDatum] $ \datum@SpotBidDatum{bid=Prices bid,..} ->
               Output
                 { outputAddress = aftermarketAddress1
                 , outputValue = utxoValue (fromIntegral bidDeposit) $ mconcat
@@ -511,7 +511,7 @@ regressionTest3 = do
       , extraKeyWitnesses = [bidderPubKey]
       }
 
-  bidUTxOs <- filter (isJust . snd) <$> txOutRefsAndDatumsAtAddress @BidDatum aftermarketAddress1
+  bidUTxOs <- filter (isJust . snd) <$> txOutRefsAndDatumsAtAddress @SpotBidDatum aftermarketAddress1
   auctionUTxOs <- filter (isJust . snd) <$> txOutRefsAndDatumsAtAddress @AuctionDatum aftermarketAddress1
   spotUTxOs <- filter (isJust . snd) <$> txOutRefsAndDatumsAtAddress @SpotDatum aftermarketAddress2
 
@@ -522,7 +522,7 @@ regressionTest3 = do
     [sellerPayPrivKey]
     emptyTxParams
       { tokens = mconcat
-          [ flip map bidUTxOs $ \(_, Just BidDatum{..}) -> 
+          [ flip map bidUTxOs $ \(_, Just SpotBidDatum{..}) -> 
               TokenMint
                 { mintTokens = 
                     [ ("Bid", -1)
@@ -560,14 +560,14 @@ regressionTest3 = do
                 { inputId = bidRef
                 , inputWitness = 
                     SpendWithPlutusReference aftermarketRef InlineDatum $ 
-                      toRedeemer AcceptBid
+                      toRedeemer AcceptSpotBid
                 }
           , flip map auctionUTxOs $ \(auctionRef,_) ->
               Input
                 { inputId = auctionRef
                 , inputWitness = 
                     SpendWithPlutusReference aftermarketRef InlineDatum $ 
-                      toRedeemer AcceptBid
+                      toRedeemer AcceptSpotBid
                 }
           , flip map spotUTxOs $ \(spotRef,_) ->
               Input
@@ -578,7 +578,7 @@ regressionTest3 = do
                 }
           ]
       , outputs = mconcat
-          [ flip map bidUTxOs $ \(ref, Just BidDatum{..}) ->
+          [ flip map bidUTxOs $ \(ref, Just SpotBidDatum{..}) ->
               Output
                 { outputAddress = toCardanoApiAddress paymentAddress
                 , outputValue = utxoValue (fromIntegral bidDeposit) $ mconcat
@@ -601,21 +601,21 @@ regressionTest3 = do
           ]
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       , extraKeyWitnesses = [sellerPubKey]
       }
 
 -------------------------------------------------
 -- Misc Failure Tests
 -------------------------------------------------
--- | When accepting a single valid Bid UTxO, close the associated Auction UTxO, and purchase a Spot UTxO in
+-- | When accepting a single valid SpotBid UTxO, close the associated Auction UTxO, and purchase a Spot UTxO in
 -- the same transaction, the auction payment output is first but invalid. There is an extra output
 -- between the payment outputs and first in the output list.
 failureTest1 :: MonadEmulator m => m ()
@@ -663,7 +663,7 @@ failureTest1 = do
         }
 
       -- Bid Info
-      bidDatum = unsafeCreateBidDatum $ NewBidInfo
+      bidDatum = unsafeCreateSpotBidDatum $ NewSpotBidInfo
         { nftPolicyId = testTokenSymbol
         , bidderCredential = bidderCred
         , nftNames = 
@@ -712,7 +712,7 @@ failureTest1 = do
     emptyTxParams
       { tokens =
           [ TokenMint
-              { mintTokens = flip concatMap [bidDatum] $ \BidDatum{..} ->
+              { mintTokens = flip concatMap [bidDatum] $ \SpotBidDatum{..} ->
                   [ ("Bid", 1)
                   , (unPolicyBeacon $ toPolicyBeacon nftPolicyId, 1)
                   , (unBidderId $ toBidderId bidderCredential, 1)
@@ -732,7 +732,7 @@ failureTest1 = do
               }
           ]
       , outputs = mconcat
-          [ flip map [bidDatum] $ \datum@BidDatum{bid=Prices bid,..} ->
+          [ flip map [bidDatum] $ \datum@SpotBidDatum{bid=Prices bid,..} ->
               Output
                 { outputAddress = aftermarketAddress1
                 , outputValue = utxoValue (fromIntegral bidDeposit) $ mconcat
@@ -761,7 +761,7 @@ failureTest1 = do
       , extraKeyWitnesses = [bidderPubKey]
       }
 
-  bidUTxOs <- filter (isJust . snd) <$> txOutRefsAndDatumsAtAddress @BidDatum aftermarketAddress1
+  bidUTxOs <- filter (isJust . snd) <$> txOutRefsAndDatumsAtAddress @SpotBidDatum aftermarketAddress1
   auctionUTxOs <- filter (isJust . snd) <$> txOutRefsAndDatumsAtAddress @AuctionDatum aftermarketAddress1
   spotUTxOs <- filter (isJust . snd) <$> txOutRefsAndDatumsAtAddress @SpotDatum aftermarketAddress2
 
@@ -780,7 +780,7 @@ failureTest1 = do
     [sellerPayPrivKey]
     emptyTxParams
       { tokens = mconcat
-          [ flip map bidUTxOs $ \(_, Just BidDatum{..}) -> 
+          [ flip map bidUTxOs $ \(_, Just SpotBidDatum{..}) -> 
               TokenMint
                 { mintTokens = 
                     [ ("Bid", -1)
@@ -818,14 +818,14 @@ failureTest1 = do
                 { inputId = bidRef
                 , inputWitness = 
                     SpendWithPlutusReference aftermarketRef InlineDatum $ 
-                      toRedeemer AcceptBid
+                      toRedeemer AcceptSpotBid
                 }
           , flip map auctionUTxOs $ \(auctionRef,_) ->
               Input
                 { inputId = auctionRef
                 , inputWitness = 
                     SpendWithPlutusReference aftermarketRef InlineDatum $ 
-                      toRedeemer AcceptBid
+                      toRedeemer AcceptSpotBid
                 }
           , flip map spotUTxOs $ \(spotRef,_) ->
               Input
@@ -837,7 +837,7 @@ failureTest1 = do
           ]
       , outputs = intersperse extraOutput $ mconcat
           [ [extraOutput]
-          , flip map bidUTxOs $ \(ref, Just BidDatum{..}) ->
+          , flip map bidUTxOs $ \(ref, Just SpotBidDatum{..}) ->
               Output
                 { outputAddress = toCardanoApiAddress paymentAddress
                 , outputValue = utxoValue (fromIntegral $ bidDeposit - 1) $ mconcat
@@ -860,18 +860,18 @@ failureTest1 = do
           ]
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       , extraKeyWitnesses = [sellerPubKey]
       }
 
--- | When accepting a single valid Bid UTxO, close the associated Auction UTxO, and purchase a Spot UTxO in
+-- | When accepting a single valid SpotBid UTxO, close the associated Auction UTxO, and purchase a Spot UTxO in
 -- the same transaction, the spot payment output is second but invalid. There is an extra output
 -- between the payment outputs and first in the output list.
 failureTest2 :: MonadEmulator m => m ()
@@ -919,7 +919,7 @@ failureTest2 = do
         }
 
       -- Bid Info
-      bidDatum = unsafeCreateBidDatum $ NewBidInfo
+      bidDatum = unsafeCreateSpotBidDatum $ NewSpotBidInfo
         { nftPolicyId = testTokenSymbol
         , bidderCredential = bidderCred
         , nftNames = 
@@ -968,7 +968,7 @@ failureTest2 = do
     emptyTxParams
       { tokens =
           [ TokenMint
-              { mintTokens = flip concatMap [bidDatum] $ \BidDatum{..} ->
+              { mintTokens = flip concatMap [bidDatum] $ \SpotBidDatum{..} ->
                   [ ("Bid", 1)
                   , (unPolicyBeacon $ toPolicyBeacon nftPolicyId, 1)
                   , (unBidderId $ toBidderId bidderCredential, 1)
@@ -988,7 +988,7 @@ failureTest2 = do
               }
           ]
       , outputs = mconcat
-          [ flip map [bidDatum] $ \datum@BidDatum{bid=Prices bid,..} ->
+          [ flip map [bidDatum] $ \datum@SpotBidDatum{bid=Prices bid,..} ->
               Output
                 { outputAddress = aftermarketAddress1
                 , outputValue = utxoValue (fromIntegral bidDeposit) $ mconcat
@@ -1017,7 +1017,7 @@ failureTest2 = do
       , extraKeyWitnesses = [bidderPubKey]
       }
 
-  bidUTxOs <- filter (isJust . snd) <$> txOutRefsAndDatumsAtAddress @BidDatum aftermarketAddress1
+  bidUTxOs <- filter (isJust . snd) <$> txOutRefsAndDatumsAtAddress @SpotBidDatum aftermarketAddress1
   auctionUTxOs <- filter (isJust . snd) <$> txOutRefsAndDatumsAtAddress @AuctionDatum aftermarketAddress1
   spotUTxOs <- filter (isJust . snd) <$> txOutRefsAndDatumsAtAddress @SpotDatum aftermarketAddress2
 
@@ -1036,7 +1036,7 @@ failureTest2 = do
     [sellerPayPrivKey]
     emptyTxParams
       { tokens = mconcat
-          [ flip map bidUTxOs $ \(_, Just BidDatum{..}) -> 
+          [ flip map bidUTxOs $ \(_, Just SpotBidDatum{..}) -> 
               TokenMint
                 { mintTokens = 
                     [ ("Bid", -1)
@@ -1074,14 +1074,14 @@ failureTest2 = do
                 { inputId = bidRef
                 , inputWitness = 
                     SpendWithPlutusReference aftermarketRef InlineDatum $ 
-                      toRedeemer AcceptBid
+                      toRedeemer AcceptSpotBid
                 }
           , flip map auctionUTxOs $ \(auctionRef,_) ->
               Input
                 { inputId = auctionRef
                 , inputWitness = 
                     SpendWithPlutusReference aftermarketRef InlineDatum $ 
-                      toRedeemer AcceptBid
+                      toRedeemer AcceptSpotBid
                 }
           , flip map spotUTxOs $ \(spotRef,_) ->
               Input
@@ -1093,7 +1093,7 @@ failureTest2 = do
           ]
       , outputs = intersperse extraOutput $ mconcat
           [ [extraOutput]
-          , flip map bidUTxOs $ \(ref, Just BidDatum{..}) ->
+          , flip map bidUTxOs $ \(ref, Just SpotBidDatum{..}) ->
               Output
                 { outputAddress = toCardanoApiAddress paymentAddress
                 , outputValue = utxoValue (fromIntegral bidDeposit) $ mconcat
@@ -1116,18 +1116,18 @@ failureTest2 = do
           ]
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       , extraKeyWitnesses = [sellerPubKey]
       }
 
--- | When accepting a single valid Bid UTxO, close the associated Auction UTxO, and purchase a Spot UTxO in
+-- | When accepting a single valid SpotBid UTxO, close the associated Auction UTxO, and purchase a Spot UTxO in
 -- the same transaction, the auction payment output is second but invalid. There is an extra output
 -- between the payment outputs and first in the output list.
 failureTest3 :: MonadEmulator m => m ()
@@ -1175,7 +1175,7 @@ failureTest3 = do
         }
 
       -- Bid Info
-      bidDatum = unsafeCreateBidDatum $ NewBidInfo
+      bidDatum = unsafeCreateSpotBidDatum $ NewSpotBidInfo
         { nftPolicyId = testTokenSymbol
         , bidderCredential = bidderCred
         , nftNames = 
@@ -1224,7 +1224,7 @@ failureTest3 = do
     emptyTxParams
       { tokens =
           [ TokenMint
-              { mintTokens = flip concatMap [bidDatum] $ \BidDatum{..} ->
+              { mintTokens = flip concatMap [bidDatum] $ \SpotBidDatum{..} ->
                   [ ("Bid", 1)
                   , (unPolicyBeacon $ toPolicyBeacon nftPolicyId, 1)
                   , (unBidderId $ toBidderId bidderCredential, 1)
@@ -1244,7 +1244,7 @@ failureTest3 = do
               }
           ]
       , outputs = mconcat
-          [ flip map [bidDatum] $ \datum@BidDatum{bid=Prices bid,..} ->
+          [ flip map [bidDatum] $ \datum@SpotBidDatum{bid=Prices bid,..} ->
               Output
                 { outputAddress = aftermarketAddress1
                 , outputValue = utxoValue (fromIntegral bidDeposit) $ mconcat
@@ -1273,7 +1273,7 @@ failureTest3 = do
       , extraKeyWitnesses = [bidderPubKey]
       }
 
-  bidUTxOs <- filter (isJust . snd) <$> txOutRefsAndDatumsAtAddress @BidDatum aftermarketAddress1
+  bidUTxOs <- filter (isJust . snd) <$> txOutRefsAndDatumsAtAddress @SpotBidDatum aftermarketAddress1
   auctionUTxOs <- filter (isJust . snd) <$> txOutRefsAndDatumsAtAddress @AuctionDatum aftermarketAddress1
   spotUTxOs <- filter (isJust . snd) <$> txOutRefsAndDatumsAtAddress @SpotDatum aftermarketAddress2
 
@@ -1292,7 +1292,7 @@ failureTest3 = do
     [sellerPayPrivKey]
     emptyTxParams
       { tokens = mconcat
-          [ flip map bidUTxOs $ \(_, Just BidDatum{..}) -> 
+          [ flip map bidUTxOs $ \(_, Just SpotBidDatum{..}) -> 
               TokenMint
                 { mintTokens = 
                     [ ("Bid", -1)
@@ -1330,14 +1330,14 @@ failureTest3 = do
                 { inputId = bidRef
                 , inputWitness = 
                     SpendWithPlutusReference aftermarketRef InlineDatum $ 
-                      toRedeemer AcceptBid
+                      toRedeemer AcceptSpotBid
                 }
           , flip map auctionUTxOs $ \(auctionRef,_) ->
               Input
                 { inputId = auctionRef
                 , inputWitness = 
                     SpendWithPlutusReference aftermarketRef InlineDatum $ 
-                      toRedeemer AcceptBid
+                      toRedeemer AcceptSpotBid
                 }
           , flip map spotUTxOs $ \(spotRef,_) ->
               Input
@@ -1359,7 +1359,7 @@ failureTest3 = do
                 , outputDatum = OutputDatum $ toDatum $ PaymentDatum (BeaconId beaconCurrencySymbol,ref)
                 , outputReferenceScript = toReferenceScript Nothing
                 }
-          , flip map bidUTxOs $ \(ref, Just BidDatum{..}) ->
+          , flip map bidUTxOs $ \(ref, Just SpotBidDatum{..}) ->
               Output
                 { outputAddress = toCardanoApiAddress paymentAddress
                 , outputValue = utxoValue (fromIntegral $ bidDeposit - 1) $ mconcat
@@ -1372,18 +1372,18 @@ failureTest3 = do
           ]
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       , extraKeyWitnesses = [sellerPubKey]
       }
 
--- | When accepting a single valid Bid UTxO, close the associated Auction UTxO, and purchase a Spot UTxO in
+-- | When accepting a single valid SpotBid UTxO, close the associated Auction UTxO, and purchase a Spot UTxO in
 -- the same transaction, the spot payment output is first but invalid. There is an extra output
 -- between the payment outputs and first in the output list.
 failureTest4 :: MonadEmulator m => m ()
@@ -1431,7 +1431,7 @@ failureTest4 = do
         }
 
       -- Bid Info
-      bidDatum = unsafeCreateBidDatum $ NewBidInfo
+      bidDatum = unsafeCreateSpotBidDatum $ NewSpotBidInfo
         { nftPolicyId = testTokenSymbol
         , bidderCredential = bidderCred
         , nftNames = 
@@ -1480,7 +1480,7 @@ failureTest4 = do
     emptyTxParams
       { tokens =
           [ TokenMint
-              { mintTokens = flip concatMap [bidDatum] $ \BidDatum{..} ->
+              { mintTokens = flip concatMap [bidDatum] $ \SpotBidDatum{..} ->
                   [ ("Bid", 1)
                   , (unPolicyBeacon $ toPolicyBeacon nftPolicyId, 1)
                   , (unBidderId $ toBidderId bidderCredential, 1)
@@ -1500,7 +1500,7 @@ failureTest4 = do
               }
           ]
       , outputs = mconcat
-          [ flip map [bidDatum] $ \datum@BidDatum{bid=Prices bid,..} ->
+          [ flip map [bidDatum] $ \datum@SpotBidDatum{bid=Prices bid,..} ->
               Output
                 { outputAddress = aftermarketAddress1
                 , outputValue = utxoValue (fromIntegral bidDeposit) $ mconcat
@@ -1529,7 +1529,7 @@ failureTest4 = do
       , extraKeyWitnesses = [bidderPubKey]
       }
 
-  bidUTxOs <- filter (isJust . snd) <$> txOutRefsAndDatumsAtAddress @BidDatum aftermarketAddress1
+  bidUTxOs <- filter (isJust . snd) <$> txOutRefsAndDatumsAtAddress @SpotBidDatum aftermarketAddress1
   auctionUTxOs <- filter (isJust . snd) <$> txOutRefsAndDatumsAtAddress @AuctionDatum aftermarketAddress1
   spotUTxOs <- filter (isJust . snd) <$> txOutRefsAndDatumsAtAddress @SpotDatum aftermarketAddress2
 
@@ -1548,7 +1548,7 @@ failureTest4 = do
     [sellerPayPrivKey]
     emptyTxParams
       { tokens = mconcat
-          [ flip map bidUTxOs $ \(_, Just BidDatum{..}) -> 
+          [ flip map bidUTxOs $ \(_, Just SpotBidDatum{..}) -> 
               TokenMint
                 { mintTokens = 
                     [ ("Bid", -1)
@@ -1586,14 +1586,14 @@ failureTest4 = do
                 { inputId = bidRef
                 , inputWitness = 
                     SpendWithPlutusReference aftermarketRef InlineDatum $ 
-                      toRedeemer AcceptBid
+                      toRedeemer AcceptSpotBid
                 }
           , flip map auctionUTxOs $ \(auctionRef,_) ->
               Input
                 { inputId = auctionRef
                 , inputWitness = 
                     SpendWithPlutusReference aftermarketRef InlineDatum $ 
-                      toRedeemer AcceptBid
+                      toRedeemer AcceptSpotBid
                 }
           , flip map spotUTxOs $ \(spotRef,_) ->
               Input
@@ -1615,7 +1615,7 @@ failureTest4 = do
                 , outputDatum = OutputDatum $ toDatum $ PaymentDatum (BeaconId beaconCurrencySymbol,ref)
                 , outputReferenceScript = toReferenceScript Nothing
                 }
-          , flip map bidUTxOs $ \(ref, Just BidDatum{..}) ->
+          , flip map bidUTxOs $ \(ref, Just SpotBidDatum{..}) ->
               Output
                 { outputAddress = toCardanoApiAddress paymentAddress
                 , outputValue = utxoValue (fromIntegral bidDeposit) $ mconcat
@@ -1628,14 +1628,14 @@ failureTest4 = do
           ]
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       , extraKeyWitnesses = [sellerPubKey]
       }
 
@@ -1651,13 +1651,13 @@ tests = testGroup "Misc Tests"
   , mustSucceed "regressionTest3" regressionTest3
 
   , scriptMustFailWithError "failureTest1"
-      "Auction payment UTxO missing bid deposit"
+      "Spot auction payment UTxO missing bid deposit"
       failureTest1
   , scriptMustFailWithError "failureTest2"
       "Spot payment UTxO has wrong value"
       failureTest2
   , scriptMustFailWithError "failureTest3"
-      "Auction payment UTxO missing bid deposit"
+      "Spot auction payment UTxO missing bid deposit"
       failureTest3
   , scriptMustFailWithError "failureTest4"
       "Spot payment UTxO has wrong value"

@@ -109,7 +109,7 @@ import qualified Ledger.CardanoWallet as Mock
 import Data.Default (def)
 import Ledger.Address (toPlutusAddress)
 
-import CardanoAftermarket
+import CardanoAftermarket hiding (posixTimeToSlot)
 
 -------------------------------------------------
 -- Core Test Framework
@@ -357,7 +357,7 @@ data References = References
   { beaconsRef :: TxOutRef
   , aftermarketRef :: TxOutRef
   , proxyRef :: TxOutRef
-  , paymentObserverRef :: TxOutRef
+  , aftermarketObserverRef :: TxOutRef
   } deriving (Show)
 
 initializeReferenceScripts :: E.MonadEmulator m => m References
@@ -369,7 +369,7 @@ initializeReferenceScripts = do
       { outputs =
           [ Output
               { outputAddress = refScriptAddress
-              , outputValue = LV.lovelaceToValue 30_000_000
+              , outputValue = LV.lovelaceToValue 36_000_000
               , outputDatum = PV2.NoOutputDatum
               , outputReferenceScript = toReferenceScript $ Just beaconScript
               }
@@ -391,7 +391,7 @@ initializeReferenceScripts = do
       { outputs =
           [ Output
               { outputAddress = refScriptAddress
-              , outputValue = LV.lovelaceToValue 13_000_000
+              , outputValue = LV.lovelaceToValue 20_000_000
               , outputDatum = PV2.NoOutputDatum
               , outputReferenceScript = toReferenceScript $ Just aftermarketScript
               }
@@ -415,18 +415,18 @@ initializeReferenceScripts = do
       { outputs =
           [ Output
               { outputAddress = refScriptAddress
-              , outputValue = LV.lovelaceToValue 25_000_000
+              , outputValue = LV.lovelaceToValue 44_000_000
               , outputDatum = PV2.NoOutputDatum
-              , outputReferenceScript = toReferenceScript $ Just paymentObserverScript
+              , outputReferenceScript = toReferenceScript $ Just aftermarketObserverScript
               }
           ]
       , certificates =
           [ Certificate
-              { certificateCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { certificateCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , certificateWitness = 
                   StakeWithPlutusScript 
-                    (toVersioned $ toLedgerScript paymentObserverScript) 
-                    (toRedeemer RegisterPaymentObserverScript)
+                    (toVersioned $ toLedgerScript aftermarketObserverScript) 
+                    (toRedeemer RegisterAftermarketObserverScript)
               , certificateAction = Register
               }
           ]
@@ -436,7 +436,7 @@ initializeReferenceScripts = do
     <$> txOutRefWithReferenceScript (scriptHash beaconScript)
     <*> txOutRefWithReferenceScript (scriptHash aftermarketScript)
     <*> txOutRefWithReferenceScript (scriptHash proxyScript)
-    <*> txOutRefWithReferenceScript (scriptHash paymentObserverScript)
+    <*> txOutRefWithReferenceScript (scriptHash aftermarketObserverScript)
 
 mintTestTokens 
   :: E.MonadEmulator m 

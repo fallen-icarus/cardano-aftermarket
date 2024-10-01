@@ -1,4 +1,5 @@
 use aiken/transaction/value.{PolicyId}
+use aiken/transaction/credential.{Address}
 
 pub type MarketRedeemer {
   // Close or update either a Spot UTxO or an Auction UTxO.
@@ -10,8 +11,18 @@ pub type MarketRedeemer {
   // Purchase a Spot UTxO.
   PurchaseSpot
 
-  // Accept a Bid UTxO.
-  AcceptBid
+  // Accept a Spot Bid UTxO.
+  AcceptSpotBid
+  
+  // Accept claimable Bid UTxO. The seller_deposit will be stored with the AcceptedBid UTxO and the
+  // payment_address is the address the seller wishes to have the bid amount sent to.
+  AcceptClaimBid { seller_deposit: Int, payment_address: Address }
+
+  // Claim accepted Bid UTxO.
+  ClaimAcceptedBid
+
+  // Unlock an unclaimed accepted bid after the claim expiration has passed.
+  UnlockUnclaimedAcceptedBid
 }
 
 pub type BeaconsRedeemer {
@@ -25,12 +36,11 @@ pub type BeaconsRedeemer {
   RegisterBeaconsScript
 }
 
-// Redeemers for the payment observer script.
-pub type PaymentObserverRedeemer {
-  // Observe a market payment transaction. This observes the payment for both spot purchases and
-  // bid acceptances.
-  ObservePayment{ beacon_policy_id: PolicyId }
+// Redeemers for the aftermarket observer script.
+pub type MarketObserverRedeemer {
+  // Observe a market payment or acceptance transaction. 
+  ObserveAftermarket{ beacon_policy_id: PolicyId }
 
-  // Register the payment observer script allow it to be used as a staking script.
-  RegisterPaymentObserverScript
+  // Register the aftermarket observer script allow it to be used as a staking script.
+  RegisterAftermarketObserverScript
 }

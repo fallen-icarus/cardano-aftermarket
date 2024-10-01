@@ -45,16 +45,16 @@ auctionBeacon="${beaconPolicyId}.${auctionBeaconName}"
 policyBeacon="${beaconPolicyId}.${policyBeaconName}"
 
 ## Create and submit the transaction.
-cardano-cli transaction build \
-  --tx-in e007d3d84edd136251815935eab73bf56f464079fda9d619e5f91e97bd845a2e#1 \
-  --tx-in e007d3d84edd136251815935eab73bf56f464079fda9d619e5f91e97bd845a2e#0 \
-  --spending-tx-in-reference b4fbe31ad2af2da42ede40d02585c3275c449e1f4caab8d3627069c7403c771d#0 \
+cardano-cli conway transaction build \
+  --tx-in cb9675e9f74b559aa2f9196e0a985debf93621f38e24be6711f9872d40ee06ea#1 \
+  --tx-in e5f9bced37a5d32da7efd27171babf2ae6bfcaec65724eec797bddf522407798#0 \
+  --spending-tx-in-reference cb9675e9f74b559aa2f9196e0a985debf93621f38e24be6711f9872d40ee06ea#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $marketRedeemerFile \
-  --tx-out "$(cat ${walletDir}01.addr) + 5000000 lovelace + 1 ${nftPolicyId}.${nftName1} + 1 ${nftPolicyId}.${nftName2}" \
+  --tx-out "$(cat ${walletDir}01.addr) + 3000000 lovelace + 1 ${nftPolicyId}.${nftName1} + 1 ${nftPolicyId}.${nftName2}" \
   --mint "-1 ${auctionBeacon} + -1 ${policyBeacon}" \
-  --mint-tx-in-reference e6573f7aef914f388bf792e28fdb6af3d2acde3e7b1070484044fb84bee3fa6d#0 \
+  --mint-tx-in-reference d725ebf0adcc114251b993389032e4d67bfbdcaeaeb368edf540877d86562167#0 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --policy-id $beaconPolicyId \
@@ -71,6 +71,6 @@ cardano-cli transaction sign \
   --testnet-magic 1 \
   --out-file "${tmpDir}tx.signed"
 
-cardano-cli transaction submit \
-  --testnet-magic 1 \
+cardano-aftermarket submit \
+  --testnet \
   --tx-file "${tmpDir}tx.signed"
