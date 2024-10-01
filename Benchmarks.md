@@ -270,9 +270,9 @@ Bottleneck: Memory
 Max: 27 Bids  
 Bottleneck: Memory
 
-## Closing Claim UTxOs
+## Closing ClaimBid UTxOs
 
-#### Each Claim UTxO uses three assets for the bid.
+#### Each ClaimBid UTxO uses three assets for the bid.
 | Bids Closed | Tx Fee | Req. Collateral |
 |:--:|:--:|:--:|
 | 1 | 0.206458 ADA | 0.309687 ADA |
