@@ -191,11 +191,17 @@ In order to be maximally composable with these DeFi protocols, the auction has t
 - A spot auction type where the seller is the one to finalize the trade.
 - A claim auction type where the buyer is the one to finalize the trade.
 
+*The seller does not decide which auction type to use*. Instead, the bidder's decide the type of bid
+to create: Spot Bids or Claim Bids. Spot Bids result in spot auctions and Claim Bids result in
+claim auctions. It is possible for an auction to be a *hybrid auction* (ie, have bids for *both*
+types). Due to the composability of this protocol, the seller can choose any type of bid for their
+auction. Bidders can also freely convert between bid types.
+
 ### UTxO Types
 
 This protocol supports five types of UTxOs:
 
-- Spot UTxOs - a UTxO dedicated to selling NFTs at a predefined price.
+- Spot UTxOs - a UTxO dedicated to selling NFTs at a pre-defined price.
 - Auction UTxOs - a UTxO dedicated to initiating an auction for the given NFTs.
 - SpotBid UTxOs - a UTxO dedicated to bids for an associated Auction UTxO that can be immediately
 accpeted by sellers as long as the NFTs are sent to the specified address.
@@ -247,7 +253,7 @@ across the sellers' DApp addresses.
 Due to the amount of logic required for this protocol and the desire to minimize the impact from
 redundant executions, this protocol uses 3 separate smart contracts; *not all of them are required
 with each transaction*. Each smart contract is dedicated to a specific purpose. Most user actions
-only required 2 of the 3 contracts in a single transaction. Some actions do require all three.
+only require 2 of the 3 contracts in a single transaction. Some actions do require all three.
 However, since these scripts can be used as reference scripts, there is still plenty of room for
 DApp composability.
 
@@ -273,8 +279,9 @@ observer smart contract so that payment addresses can be checked for proper conf
 
 Spot UTxOs have a `SpotDatum`.  
 Auction UTxOs have an `AuctionDatum`.  
-ClaimBid UTxOs have an `ClaimBidDatum`.
-AcceptedBid UTxOs have an `AcceptedBidDatum`.
+SpotBid UTxOs have an `SpotBidDatum`.  
+ClaimBid UTxOs have an `ClaimBidDatum`.  
+AcceptedBid UTxOs have an `AcceptedBidDatum`.  
 
 ```haskell
 -- | A type synonym for an asset's full name.
@@ -359,7 +366,7 @@ data ClaimBidDatum = ClaimBidDatum
   , bidDeposit :: Integer
   -- | The actual bid. This field tells the seller how much you are promising to pay for the NFTs.
   , bid :: [(Asset,Integer)]
-  -- | The time this bid expires.
+  -- | The time this bid expires. It is optional.
   , bidExpiration :: Maybe POSIXTime
   -- | The time, after which, the seller can reclaim the NFTs + the bidder's deposit.
   , claimExpiration :: POSIXTime
@@ -368,8 +375,8 @@ data ClaimBidDatum = ClaimBidDatum
 -- | The datum for an AcceptedBid UTxO for NFTs. It contains the required NFTs and is waiting to be
 -- claimed by the bidder. The bidder must pay the seller the required bid amount + the seller's
 -- deposit to actually claim the NFTs. If the bidder does not claim them, the the seller can
--- re-claim the NFTs after the claim expiration has passed. The seller will also claim the bidder's
--- deposit in this context as compensation.
+-- re-claim the NFTs after the claim expiration has passed. The seller will also confiscate the 
+-- bidder's deposit in this context as compensation.
 data AcceptedBidDatum = AcceptedBidDatum
   -- | The policy id for the beacon script.
   { beaconId :: CurrencySymbol
@@ -403,13 +410,13 @@ data AcceptedBidDatum = AcceptedBidDatum
 data MarketRedeemer
   -- | Close or update either a Spot UTxO or an Auction UTxO.
   = CloseOrUpdateSellerUTxO
-  -- | Close or update a Bid UTxO.
+  -- | Close or update a SpotBid UTxO or a ClaimBid UTxO.
   | CloseOrUpdateBidderUTxO
   -- | Purchase a Spot UTxO.
   | PurchaseSpot
-  -- | Accept a SpotBid UTxO, and close the associated Auction UTxO.
+  -- | Accept a SpotBid UTxO, and (possibly) close the associated Auction UTxO.
   | AcceptSpotBid
-  -- | Accept a ClaimBid UTxO, and close the associated Auction UTxO. This will create an
+  -- | Accept a ClaimBid UTxO, and (possibly) close the associated Auction UTxO. This will create an
   -- AcceptedBid UTxO with the NFTs for the bidder to come claim. The payment address is the address
   -- the seller would like the payment sent to.
   | AcceptClaimBid { sellerDeposit :: Integer, paymentAddress :: Address }
@@ -448,7 +455,8 @@ double-satisfaction.
 
 ```haskell
 -- | The `CurrencySymbol` is always the beacon policy id, and the `TxOutRef` is always
--- the output reference for either the Spot UTxO being purchased or the Bid UTxO being accepted.
+-- the output reference for either the Spot UTxO being purchased or the Bid UTxO being
+-- accepted/claimed.
 newtype PaymentDatum = PaymentDatum (CurrencySymbol,TxOutRef)
 ```
 
@@ -476,7 +484,7 @@ At a low-level, all of the following must be true:
     - `beaconId` == this policy id
     - `aftermarketObserverHash` == hard-coded aftermarket observer hash
     - `nftPolicyId` == policy id for nfts being sold in the UTxO and *cannot* be the beacon policy id
-    - `nftNames` == token names for nfts being sold in the UTxO and *cannot* be empty
+    - `nftNames` == *sorted* token names for nfts being sold in the UTxO and *cannot* be empty
     - `paymentAddress` must either use a payment pubkey, or the proxy script as the payment
     credential and a valid staking credential
     - `saleDeposit` > 0
@@ -551,7 +559,7 @@ At a low-level, all of the following must be true:
 If all beacons need to be burned, it is cheaper to use `BurnBeacons`. However, if beacons are being
 recycled into new outputs or new beacons need to be minted, then `CreateCloseOrUpdateMarketUTxOs`
 should be used. If all beacons are being recycled *and* no minting is required, the beacon script
-must be executed as a staking script.
+must be executed as a staking script using `CreateCloseOrUpdateMarketUTxOs`.
 
 *Spot payment outputs must be in the same order as the Spot inputs!* They do *not* need
 to be paired up. You can even have unrelated outputs between the required outputs. This ordering
@@ -564,7 +572,7 @@ restriction helps with performance.
 At a high-level, creating Auction UTxOs involves creating the new UTxOs at the seller's DApp address
 with the desired `AuctionDatum`s, storing them with the NFTs in question, and tagging them with the
 required beacons. The beacon smart contract will check all outputs containing beacons to ensure
-invalid UTxOs are never broadcast to other users. The NFTs must be stored with the auction UTxOs to
+invalid UTxOs are never broadcast to other users. The NFTs must be stored with the Auction UTxOs to
 prove ownership of the NFTs in question.
 
 At a low-level, all of the following must be true:
@@ -579,9 +587,9 @@ of each:
 - All Auction UTxO outputs must have a valid inline `AuctionDatum`:
     - `beaconId` == this policy id
     - `aftermarketObserverHash` == hard-coded aftermarket observer hash
-    - `nftPolicyId` == policy id for nfts being auctioned in the UTxO and cannot be the beacon
+    - `nftPolicyId` == policy id for nfts being auctioned in the UTxO and *cannot* be the beacon
     policy id
-    - `nftNames` == token names for nfts being auctioned in the UTxO and cannot be empty
+    - `nftNames` == *sorted* token names for nfts being auctioned in the UTxO and *cannot* be empty
     - `startingPrice` must not be empty, must not use any protocol beacons as the assets,
     all prices must be > 0, and the list must be sorted.
 - All Auction UTxO outputs must have the NFTs being auctioned.
@@ -646,12 +654,12 @@ At a low-level, all of the following must be true:
     - a BidderId beacon with the token name corresponding to the `bidderCredential` in the
     `SpotBidDatum`.
     - a Policy beacon with the token name corresponding to the `nftPolicyId` in the `SpotBidDatum`.
-- All SpotBid UTxO outputs must have a valid inline `ClaimBidDatum`:
+- All SpotBid UTxO outputs must have a valid inline `SpotBidDatum`:
     - `beaconId` == this policy id
     - `aftermarketObserverHash` == hard-coded aftermarket observer hash
     - `bidderCredential` == credential for the bidder.
     - `nftPolicyId` == policy id for nfts being sold in the UTxO and *cannot* be the beacon policy id
-    - `nftNames` == token names for nfts being sold in the UTxO and *cannot* be empty
+    - `nftNames` == *sorted* token names for nfts being sold in the UTxO and *cannot* be empty
     - `paymentAddress` must either use a payment pubkey, or the proxy script as the payment
     credential and a valid staking credential
     - `bidDeposit` > 0
@@ -674,6 +682,7 @@ credential can use the associated BidderId beacon.
 
 The bid can have different terms than the associated Auction UTxO. For example, the bid could ask
 for different NFTs and/or offer different assets than the `startingPrice` from the `AuctionDatum`.
+SpotBids can also be used to create counter-offers for Spot sales.
 
 #### Closing SpotBid UTxOs
 
@@ -689,7 +698,7 @@ At a low-level, all of the following must be true:
 
 - The aftermarket spending smart contract is executed for the SpotBid UTxO input using
 `CloseOrUpdateBidderUTxO`.
-- The bid UTxO must have a `SpotBidDatum` (or a `ClaimBidDatum`).
+- The Bid UTxO must have a `SpotBidDatum` (or a `ClaimBidDatum`).
 - If the Bid UTxO being spent contains beacons:
     - The `bidderCredential` must signal approval.
     - The beacon smart contract must be executed as a minting policy using
@@ -744,9 +753,10 @@ must be executed as a staking script.
 paired up. You can even have unrelated outputs between the required outputs. This ordering
 restriction helps with performance.
 
-It is possible to accept spot bids that have different terms than the associated Auction UTxO. For
+It is possible to accept SpotBids that have different terms than the associated Auction UTxO. For
 example, you can accept a bid asking for only some of the NFTs being auctioned. You can then
-rollover the leftover NFTs into a new Auction UTxO in the same transaction.
+rollover the leftover NFTs into a new Auction UTxO in the same transaction. You can also accept a
+SpotBid that is a counter-offer to one of your Spot UTxOs.
 
 If the NFTs required for the bid payment are currently in an Auction UTxO, that UTxO can be closed
 in the same transaction using `AcceptBid` as the spending redeemer. If the NFTs are in a Spot UTxO,
@@ -778,7 +788,7 @@ At a low-level, all of the following must be true:
     - `aftermarketObserverHash` == hard-coded aftermarket observer hash
     - `bidderCredential` == credential for the bidder.
     - `nftPolicyId` == policy id for nfts being sold in the UTxO and *cannot* be the beacon policy id
-    - `nftNames` == token names for nfts being sold in the UTxO and *cannot* be empty
+    - `nftNames` == *sorted* token names for nfts being sold in the UTxO and *cannot* be empty
     - `bidDeposit` > 0
     - `bid` must not be empty, must not use any protocol beacons as the assets, all prices
     must be > 0, and the list must be sorted.
@@ -808,6 +818,7 @@ more attractive (ie, less risky) to the seller.
 
 The bid can have different terms than the associated Auction UTxO. For example, the bid could ask
 for different NFTs and/or offer different assets than the `startingPrice` from the `AuctionDatum`.
+It can even be a counter-offer to a Spot UTxO.
 
 #### Closing ClaimBid UTxOs
 
@@ -831,7 +842,7 @@ At a low-level, all of the following must be true:
 - If no beacons are present, the address' staking credential must approve.
 
 The beacon smart contract will actually do the exact same check as when creating ClaimBid UTxOs.
-However, since closing SpotBid UTxOs implies no new ClaimBid UTxO outputs, there are no outputs to
+However, since closing ClaimBid UTxOs implies no new ClaimBid UTxO outputs, there are no outputs to
 check.
 
 If there is ever an invalid ClaimBid UTxO (ie, an UTxO with a `ClaimBidDatum` but no beacons), it can
@@ -872,10 +883,10 @@ At a low-level, all of the following must be true:
         the input.
         - It must contain the `bidderDeposit` amount of ada + the `sellerDeposit` amount of ada +
         the NFTs being sold.
-        - The `bidExpiration` in the input's `ClaimBidDatum` must not have passed - uses
-        invalid-hereafter of the transaction.
+        - The `bidExpiration` in the input's `ClaimBidDatum` must be >= invalid-hereafter of the 
+        transaction.
     - If beacons need to be minted/burned, either all beacons attached to the input must be burned
-    or the beacon script must be executed using `CreateCloseOrUpdateMarketUTxOs`. If not beacons
+    or the beacon script must be executed using `CreateCloseOrUpdateMarketUTxOs`. If no beacons
     need to be minted/burned, the beacon script is not required.
 - The seller must approve the transaction.
 
@@ -885,9 +896,10 @@ If the ClaimBid does not expire (no `bidExpiration` is set), invalid-hereafter i
 to be paired up. You can even have unrelated outputs between the required outputs. This ordering
 restriction helps with performance.
 
-It is possible to accept claim bids that have different terms than the associated Auction UTxO. For
+It is possible to accept ClaimBids that have different terms than the associated Auction UTxO. For
 example, you can accept a bid asking for only some of the NFTs being auctioned. You can then
-rollover the leftover NFTs into a new Auction UTxO in the same transaction.
+rollover the leftover NFTs into a new Auction UTxO in the same transaction. It is also possible to
+accept a ClaimBid that is a counter-offer to a Spot UTxO.
 
 If the NFTs required for the bid payment are currently in an Auction UTxO, that UTxO can be closed
 in the same transaction using `AcceptClaimBid` as the spending redeemer. If the NFTs are in a Spot
@@ -941,6 +953,8 @@ At a low-level, all of the following must be true:
     - The input must be spent using `UnlockUnclaimedAcceptedBid`.
     - The input must have a `AcceptedBidDatum`.
     - The input must have the required beacons.
+    - The `claimExpiration` in the `AcceptedBidDatum` must be <= invalid-before for this
+    transaction.
     - Either all beacons attached to the input must be burned or the beacon script must be executed
       using `CreateCloseOrUpdateMarketUTxOs`.
 - The seller must approve the transaction.
@@ -984,7 +998,7 @@ despite using only a single DApp address per user. The beacon tokens are also wh
 supports financial markets that have not even been invented yet; no permission or governance action
 are required to create new aftermarkets.
 
-### Supports Payment in *All* Native Assets
+### Supports Payments using *All* Native Assets
 
 Buyers and sellers can exchange *any* assets for the NFTs. This includes assets that do not even
 exist yet. Even other NFTs can be offered! No permission or governance action is needed to add
@@ -1013,8 +1027,8 @@ ones to submit the final aftermarket transaction. To enable these compositions, 
 supports both kinds of auctions.
 
 > [!NOTE]
-> Spot Auctions are effectively spot trades where the buyer submits the final transaction while Spot
-> purchases are spot trades where the seller submits the final transaction.
+> Spot Auctions are effectively spot trades where the seller submits the final transaction while Spot
+> Purchases are spot trades where the buyer submits the final transaction.
 
 ### Support For Art NFTs
 
@@ -1033,7 +1047,7 @@ to further filter for options contracts where ada is the offered asset. The only
 enable support for this is if the associated options contract was referenced when the corresponding
 aftermarket sale/auction was created. This would prevent creating the wrong beacons for each sale.
 
-While this is technically possible to do, it would add some substantial complexity to the protocol
+While this is technically possible to do, it would add substantial complexity to the protocol
 and would dramatically impact overall performance when creating sales. Given the already high
 throughput when creating sales, this may be acceptable but it may not be necessary.
 
@@ -1042,10 +1056,7 @@ is created, the off-chain infrastructure could automatically look up the associa
 asset's information and store them together in its database. Then, this off-chain infrastructure can
 offer filtering capabilities when users query those sales; it can even return the associated
 information for the financial asset in the same query. A decentralized Cardano database like Koios
-could fill this niche without sacrificing decentralization.
-
-If the off-chain infrastructure is unable to satisfy this niche without sacrificing
-decentralization, then support for this filtering can be added at the protocol level.
+could possibly fill this niche without sacrificing availability.
 
 ## Conclusion
 
