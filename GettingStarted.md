@@ -17,8 +17,8 @@ template scripts to come up with your own remote node template scripts for carda
 - [Overspent Budget](#overspent-budget)
 - [Using Remote Nodes](#using-remote-nodes)
 - [Minting Test Tokens](#minting-test-tokens)
-- [Registering Scripts - DEVELOPERS ONLY](#registering-the-scripts-for-staking-execution---developers-only)
 - [Creating Reference Scripts](#creating-reference-scripts)
+- [Registering Scripts - DEVELOPERS ONLY](#registering-the-scripts-for-staking-execution---developers-only)
 - [Creating a Spot UTxO](#creating-a-spot-utxo)
 - [Closing a Spot UTxO](#closing-a-spot-utxo)
 - [Updating a Spot UTxO](#updating-a-spot-utxo)
@@ -34,8 +34,8 @@ template scripts to come up with your own remote node template scripts for carda
 - [Closing a ClaimBid UTxO](#closing-a-claimbid-utxo)
 - [Updating a ClaimBid UTxO](#updating-a-claimbid-utxo)
 - [Accepting a ClaimBid UTxO](#accepting-a-claimbid-utxo)
-- [Claiming an AcceptedBid UTxO](#claiming-an-accepted-bid-utxo)
-- [Unlocking an Unclaimed AcceptedBid UTxO](#unlocking-an-unclaimed-accepted-bid-utxo)
+- [Claiming an AcceptedBid UTxO](#claiming-an-acceptedbid-utxo)
+- [Unlocking an Unclaimed AcceptedBid UTxO](#unlocking-an-unclaimed-acceptedbid-utxo)
 - [Time Conversions](#time-conversions)
 - [Queries](#queries)
   - [Querying Personal Addresses](#querying-personal-addresses)
@@ -202,19 +202,18 @@ documentation in any browser.
 While `cardano-cli` is able to auto-balance transactions, the auto-balancer does not always work
 when scripts are executed in a transaction where native tokens must go to the change address. It
 does not properly add the change *before* estimating the execution budgets for the transaction which
-always results in it under-estimating the required execution units needed by the scripts. There are
-open issues about this [here](https://github.com/input-output-hk/cardano-node/issues/5386) and
-[here](https://github.com/input-output-hk/cardano-api/issues/302). If you ever see a very long and
-confusing error message while using `cardano-cli transaction build`, this is probably the issue.
+always results in it under-estimating the required execution units needed by the scripts. If you
+ever see a very long and confusing error message while using `cardano-cli transaction build`, this
+is probably the issue.
 
 As a work around, whenever you build a transaction using `cardano-cli transaction build` where
-scripts are being executed, you must manually create an output that has all of the native tokens
+scripts are being executed, you can manually create an output that has all of the native tokens
 that would normally go into the change output. You can let the auto-balancer balance the ada.
 
 ## Using Remote Nodes
 
-`cardano-cli transaction build` requires a local node for the auto-balancer which means it cannot be
-used to build a transaction for a remote node. Instead, the `cardano-cli transaction build-raw` 
+`cardano-cli conway transaction build` requires a local node for the auto-balancer which means it cannot be
+used to build a transaction for a remote node. Instead, the `cardano-cli conway transaction build-raw` 
 command is required. This command requires the following steps:
 1. Build a temporary transaction that is missing the execution units and transaciton fee but is
    properly balanced. You can assume a fee of zero for this transaction.
@@ -277,21 +276,33 @@ protocol.
 To see how to mint test tokens using a local node, refer
 [here](scripts/local-node/mint-test-tokens/)
 
+## Creating Reference Scripts
+
+**Do not skip this step!** While beacon tokens can be used to trustlessly share reference scripts,
+this has not been set up for the beta testing. For now, you will need your own reference scripts.
+
+Creating reference scripts involves the following steps:
+1. Export the scripts from the `cardano-aftermarket` CLI.
+2. Submit a transaction with the reference script stored in the outputs.
+
+Due to the sizes of the scripts, each script will require its own transaction.
+
+You can see examples [here](scripts/local-node/create-reference-scripts/).
+
 ## Registering the scripts for staking execution - DEVELOPERS ONLY
 
 **This action only needs to be done once per network for the entire protocol. It does not need to be
 done by any users.** These instructions are for completeness as they may be needed by developers.
 
 The plutus scripts cannot be executed as staking scripts until after they are registered. Once the
-scripts are registered, they can be used as staking scripts immediately by all users. Registering
-the scripts does not require executing the scripts (this may change in the future). Once they are
+scripts are registered, they can be used as staking scripts immediately by all users. Once they are
 registered, *they cannot be deregistered*.
 
 **Registration has already been done for all scripts for the preproduction testnet.**
 
-The following protocol scripts requires staking executions, and therefore, require registration:
+The following protocol scripts require staking executions, and therefore, require registration:
 - Beacon Script
-- Payment Observer Script
+- Aftermarket Observer Script
 
 Registering the scripts involve:
 1. Exporting each script from the `cardano-aftermarket` CLI.
@@ -308,8 +319,8 @@ cardano-aftermarket scripts \
   --out-file beacons.plutus
 
 cardano-aftermarket scripts \
-  --payment-script \
-  --out-file payment_observer.plutus
+  --observer-script \
+  --out-file observer.plutus
 ```
 
 ##### Exporting the redeemers
@@ -332,26 +343,13 @@ cardano-cli stake-address registration-certificate \
 cardano-cli stake-address registration-certificate \
   --conway-era \
   --key-reg-deposit-amt 2000000 \
-  --stake-script-file payment_observer.plutus \
-  --out-file payment_observer.cert
+  --stake-script-file observer.plutus \
+  --out-file observer.cert
 ```
 
 ##### Building the transaction
 To see how to build the transaction using a local node, refer 
-[here](scripts/local-node/create-reference-scripts/register-scripts.sh)
-
-## Creating Reference Scripts
-
-**Do not skip this step!** While beacon tokens can be used to trustlessly share reference scripts,
-this has not been set up for the beta testing. For now, you will need your own reference scripts.
-
-Creating reference scripts involves the following steps:
-1. Export the scripts from the `cardano-aftermarket` CLI.
-2. Submit a transaction with the reference script stored in the outputs.
-
-Due to the sizes of the scripts, each script will require its own transaction.
-
-You can see examples [here](scripts/local-node/create-reference-scripts/).
+[here](scripts/local-node/create-reference-scripts/register-scripts.sh).
 
 ## Creating a Spot UTxO
 
@@ -757,10 +755,10 @@ beaconPolicyId=$(cardano-aftermarket beacon-name policy-id \
 bidBeaconName=$(cardano-aftermarket beacon-name bid-beacon \
   --stdout)
 policyBeaconName=$(cardano-aftermarket beacon-name policy-beacon \
-  --nft-policy-id $nftPolicyId \
+  --nft-policy-id 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d' \
   --stdout)
 bidderIdName=$(cardano-aftermarket beacon-name bidder-id \
-  --bidder-staking-pubkey-hash '623a2b9a369454b382c131d7e3d12c4f93024022e5c5668cf0c5c25c' \
+  --bidder-staking-pubkey-hash $bidderCredentialHash \
   --stdout)
 
 bidBeacon="${beaconPolicyId}.${bidBeaconName}"
@@ -774,7 +772,7 @@ when generating the BidderId name.
 #### Create the Bid Datum
 ```bash
 cardano-aftermarket datums spot-bid \
-  --bidder-staking-pubkey-hash '623a2b9a369454b382c131d7e3d12c4f93024022e5c5668cf0c5c25c' \
+  --bidder-staking-pubkey-hash $bidderCredentialHash \
   --nft-policy-id 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d' \
   --nft-name '4f74686572546f6b656e0a' \
   --nft-name '54657374546f6b656e31' \
@@ -849,7 +847,7 @@ beaconPolicyId=$(cardano-aftermarket beacon-name policy-id \
 bidBeaconName=$(cardano-aftermarket beacon-name bid-beacon \
   --stdout)
 policyBeaconName=$(cardano-aftermarket beacon-name policy-beacon \
-  --nft-policy-id $nftPolicyId \
+  --nft-policy-id 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d' \
   --stdout)
 bidderIdName=$(cardano-aftermarket beacon-name bidder-id \
   --bidder-staking-pubkey-hash $bidderCredentialHash \
@@ -876,7 +874,8 @@ cardano-aftermarket redeemers market-script manage-bidder-utxo \
 The bidder's staking credential must approve the transaction.
 
 To see how to build the transaction using a local node, refer
-[here](scripts/local-node/close-spot-bid.sh).
+[here](scripts/local-node/close-bid.sh). This script is used for closing both SpotBids and
+ClaimBids.
 
 ## Updating a SpotBid UTxO
 
@@ -884,7 +883,7 @@ The steps to update SpotBid UTxOs are exactly the same as closing them, except y
 create the new outputs. All redeemers are the same.
 
 By cross-referencing the [creation script](scripts/local-node/create-spot-bid.sh) and the [closing
-script](scripts/local-node/close-spot-bid.sh), you can easily come up with your own update script.
+script](scripts/local-node/close-bid.sh), you can easily come up with your own update script.
 
 ## Accepting a SpotBid UTxO
 
@@ -949,7 +948,7 @@ beaconPolicyId=$(cardano-aftermarket beacon-name policy-id \
 bidBeaconName=$(cardano-aftermarket beacon-name bid-beacon \
   --stdout)
 policyBeaconName=$(cardano-aftermarket beacon-name policy-beacon \
-  --nft-policy-id $nftPolicyId \
+  --nft-policy-id 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d' \
   --stdout)
 bidderIdName=$(cardano-aftermarket beacon-name bidder-id \
   --bidder-staking-pubkey-hash '623a2b9a369454b382c131d7e3d12c4f93024022e5c5668cf0c5c25c' \
@@ -1005,7 +1004,7 @@ beaconPolicyId=$(cardano-aftermarket beacon-name policy-id \
 bidBeaconName=$(cardano-aftermarket beacon-name bid-beacon \
   --stdout)
 policyBeaconName=$(cardano-aftermarket beacon-name policy-beacon \
-  --nft-policy-id $nftPolicyId \
+  --nft-policy-id 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d' \
   --stdout)
 bidderIdName=$(cardano-aftermarket beacon-name bidder-id \
   --bidder-staking-pubkey-hash $bidderCredentialHash \
@@ -1064,6 +1063,8 @@ cardano-aftermarket redeemers beacon-script manage-market-utxos \
 
 #### Building the transaction
 
+You will need to specify invalid-hereafter to prove the expiration times are in the future.
+
 To see how to build the transaction using a local node, refer
 [here](scripts/local-node/create-claim-bid.sh).
 
@@ -1078,7 +1079,7 @@ Closing a ClaimBid UTxO involves the following steps:
 
 #### Calculate the hash of the staking credential used in the BidderId
 ```bash
-bidderStakePubKeyHash=$(cardano-cli stake-address key-hash \
+bidderCredentialHash=$(cardano-cli stake-address key-hash \
   --stake-verification-key-file $bidderStakePubKey)
 ```
 
@@ -1095,10 +1096,10 @@ beaconPolicyId=$(cardano-aftermarket beacon-name policy-id \
 bidBeaconName=$(cardano-aftermarket beacon-name bid-beacon \
   --stdout)
 policyBeaconName=$(cardano-aftermarket beacon-name policy-beacon \
-  --nft-policy-id $nftPolicyId \
+  --nft-policy-id 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d' \
   --stdout)
 bidderIdName=$(cardano-aftermarket beacon-name bidder-id \
-  --bidder-staking-pubkey-hash '623a2b9a369454b382c131d7e3d12c4f93024022e5c5668cf0c5c25c' \
+  --bidder-staking-pubkey-hash $bidderCredentialHash \
   --stdout)
 
 bidBeacon="${beaconPolicyId}.${bidBeaconName}"
@@ -1122,7 +1123,8 @@ cardano-aftermarket redeemers market-script manage-bidder-utxo \
 The bidder's staking credential must approve the transaction.
 
 To see how to build the transaction using a local node, refer
-[here](scripts/local-node/close-claim-bid.sh).
+[here](scripts/local-node/close-bid.sh). This script is used for closing both SpotBids and
+ClaimBids.
 
 ## Updating a ClaimBid UTxO
 
@@ -1130,7 +1132,7 @@ The steps to update ClaimBid UTxOs are exactly the same as closing them, except 
 create the new outputs. All redeemers are the same.
 
 By cross-referencing the [creation script](scripts/local-node/create-claim-bid.sh) and the [closing
-script](scripts/local-node/close-claim-bid.sh), you can easily come up with your own update script.
+script](scripts/local-node/close-bid.sh), you can easily come up with your own update script.
 
 ## Accepting a ClaimBid UTxO
 
@@ -1264,7 +1266,7 @@ beaconPolicyId=$(cardano-aftermarket beacon-name policy-id \
 bidBeaconName=$(cardano-aftermarket beacon-name bid-beacon \
   --stdout)
 policyBeaconName=$(cardano-aftermarket beacon-name policy-beacon \
-  --nft-policy-id $nftPolicyId \
+  --nft-policy-id 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d' \
   --stdout)
 bidderIdName=$(cardano-aftermarket beacon-name bidder-id \
   --bidder-staking-pubkey-hash '623a2b9a369454b382c131d7e3d12c4f93024022e5c5668cf0c5c25c' \
@@ -1336,7 +1338,7 @@ beaconPolicyId=$(cardano-aftermarket beacon-name policy-id \
 bidBeaconName=$(cardano-aftermarket beacon-name bid-beacon \
   --stdout)
 policyBeaconName=$(cardano-aftermarket beacon-name policy-beacon \
-  --nft-policy-id $nftPolicyId \
+  --nft-policy-id 'c0f8644a01a6bf5db02f4afe30d604975e63dd274f1098a1738e561d' \
   --stdout)
 bidderIdName=$(cardano-aftermarket beacon-name bidder-id \
   --bidder-staking-pubkey-hash '623a2b9a369454b382c131d7e3d12c4f93024022e5c5668cf0c5c25c' \
@@ -1377,7 +1379,8 @@ fallback in case the ansii escape sequences are causing issues for a user.
 
 The JSON response to stdout can be directly piped into `jq` for a more human-friendly format.
 
-> Note: Currently, the `cardano-aftermarket` CLI will only get the first 1000 UTxOs that satisfy a
+> [!Note] 
+> Currently, the `cardano-aftermarket` CLI will only get the first 1000 UTxOs that satisfy a
 > query. This could be 1000 personal UTxOs or 1000 contract UTxOs, depending on the query. For the
 > beta release, 1000 should be plenty. The CLI will be expanded in the future to remove this cap.
 
