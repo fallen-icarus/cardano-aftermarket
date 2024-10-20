@@ -422,7 +422,7 @@ approvalFailure1 = do
 -------------------------------------------------
 -- Datum Failures
 -------------------------------------------------
--- | Close a UTxO with a BidDatum.
+-- | Close a UTxO with a SpotBidDatum.
 datumFailure1 :: MonadEmulator m => m ()
 datumFailure1 = do
   let -- Seller Info
@@ -444,7 +444,7 @@ datumFailure1 = do
       bidderCred = PV2.PubKeyCredential bidderPubKey
 
       -- Bid Info
-      bidDatum = unsafeCreateBidDatum $ NewBidInfo
+      bidDatum = unsafeCreateSpotBidDatum $ NewSpotBidInfo
         { nftPolicyId = testTokenSymbol
         , bidderCredential = bidderCred
         , nftNames = 
@@ -461,7 +461,7 @@ datumFailure1 = do
   -- Try to create the Bid UTxO.
   void $ transact bidderPersonalAddr [refScriptAddress] [bidderPayPrivKey] $
     emptyTxParams
-      { tokens = flip map [bidDatum] $ \BidDatum{..} ->
+      { tokens = flip map [bidDatum] $ \SpotBidDatum{..} ->
           TokenMint
             { mintTokens = 
                 [ ("Bid", 1)
@@ -472,7 +472,7 @@ datumFailure1 = do
             , mintPolicy = toVersionedMintingPolicy beaconScript
             , mintReference = Just beaconsRef
             }
-      , outputs = flip map [bidDatum] $ \datum@BidDatum{bid=Prices bid,..} ->
+      , outputs = flip map [bidDatum] $ \datum@SpotBidDatum{bid=Prices bid,..} ->
           Output
             { outputAddress = aftermarketAddress
             , outputValue = utxoValue (fromIntegral bidDeposit) $ mconcat
@@ -489,14 +489,14 @@ datumFailure1 = do
       , extraKeyWitnesses = [bidderPubKey]
       }
 
-  spotUTxOs <- txOutRefsAndDatumsAtAddress @BidDatum aftermarketAddress
+  spotUTxOs <- txOutRefsAndDatumsAtAddress @SpotBidDatum aftermarketAddress
 
   -- Try to close the Spot UTxO.
   void $ transact sellerPersonalAddr [aftermarketAddress,refScriptAddress] [sellerPayPrivKey]
     emptyTxParams
       { tokens =
           [ TokenMint
-              { mintTokens = flip concatMap spotUTxOs $ \(_, Just BidDatum{..}) ->
+              { mintTokens = flip concatMap spotUTxOs $ \(_, Just SpotBidDatum{..}) ->
                   [ ("Bid", -0)
                   , (unPolicyBeacon $ toPolicyBeacon nftPolicyId, -0)
                   , (unBidderId $ toBidderId bidderCredential, -1)

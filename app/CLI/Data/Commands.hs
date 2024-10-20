@@ -16,26 +16,30 @@ data Command
   | CreateDatum NewDatum FilePath
   | CreateRedeemer NewRedeemer FilePath
   | BeaconName BeaconName Output
+  | ConvertTime ConvertTime Network
   | Query Query
   | SubmitTx Network ApiService FilePath
   | EvaluateTx Network ApiService FilePath
 
 data Script 
   = BeaconScript
-  | PaymentObserverScript
+  | MarketObserverScript
   | MarketScript
   | ProxyScript
 
 data NewDatum
   = NewSpotDatum NewSpotInfo
-  | NewBidDatum NewBidInfo
+  | NewSpotBidDatum NewSpotBidInfo
+  | NewClaimBidDatum NewClaimBidInfo
   | NewAuctionDatum NewAuctionInfo
   | NewPaymentDatum TxOutRef
+  | NewAcceptedBidDatumManual NewAcceptedBidInfo
+  | NewAcceptedBidDatumAuto Network ApiService TxOutRef Integer Address
 
 data NewRedeemer
   = NewBeaconRedeemer BeaconsRedeemer
   | NewMarketRedeemer MarketRedeemer
-  | NewPaymentObserverRedeemer PaymentObserverRedeemer
+  | NewMarketObserverRedeemer MarketObserverRedeemer
 
 data BeaconName
   = BeaconPolicyId
@@ -44,6 +48,10 @@ data BeaconName
   | BidBeaconName
   | BidderIdName Credential
   | PolicyBeaconName CurrencySymbol
+
+data ConvertTime
+  = POSIXTimeToSlot POSIXTime
+  | SlotToPOSIXTime Slot
 
 data Query
   -- | Query a user's personal address.

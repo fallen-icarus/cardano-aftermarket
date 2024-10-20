@@ -2,11 +2,14 @@ use aiken/bytearray as byte
 use aiken/dict.{Dict}
 use aiken/option
 use aiken/list
+use aiken/interval.{Interval,IntervalBound,Finite}
+use aiken/time.{PosixTime}
 use aiken/transaction.
   { Datum
   , InlineDatum
   , Redeemer
   , ScriptPurpose
+  , ValidityRange
   } as tx
 use aiken/transaction/credential.
   { Address
@@ -145,3 +148,25 @@ pub fn compare_names_no_dups(name1: AssetName, name2: AssetName) -> Ordering {
     Equal -> error @"Duplicate asset found"
   }
 }
+
+// Get the time from the tx's invalid-before setting. The invalid-before setting is used for
+// start times since it guarantees that the specified time has passed; the transaction would fail
+// otherwise. It is the best approximation for the current time since users can always set it
+// to the current time.
+pub fn get_lower_bound(val_range: ValidityRange) -> Option<PosixTime> {
+  when val_range is {
+    Interval(IntervalBound(Finite(x),_),_) -> Some(x)
+    _ -> None
+  }
+}
+
+// Get the time from the tx's invalid-hereafter setting. The invalid-hereafter setting is used for
+// expiration times since it guarantees that the specified time has not passed; the transaction
+// would fail otherwise. 
+pub fn get_upper_bound(val_range: ValidityRange) -> Option<PosixTime> {
+  when val_range is {
+    Interval(_,IntervalBound(Finite(x),_)) -> Some(x)
+    _ -> None
+  }
+}
+

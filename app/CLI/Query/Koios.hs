@@ -13,6 +13,7 @@ module CLI.Query.Koios
   , querySpots
   , queryAuctions
   , queryBids
+  , querySpecificMarketUTxO
   ) where
 
 import Relude
@@ -117,12 +118,20 @@ type KoiosApi
      :> ReqBody '[JSON] TargetAsset
      :> Post '[JSON] [MarketUTxO]
 
+  :<|>  "utxo_info"
+     :> QueryParam' '[Required] "select" Text
+     :> QueryParam' '[Required] "is_spent" Text
+     :> QueryParam "asset_list" Text
+     :> ReqBody '[JSON] ExtendedUTxOList
+     :> Post '[JSON] [MarketUTxO]
+
 personalAddressUTxOsApi 
   :<|> submitTxApi
   :<|> evaluateTxApi
   :<|> paramsApi
   :<|> sellerAddresssUTxOsApi
   :<|> assetUTxOsApi 
+  :<|> specificMarketUTxOsApi
   = client (Proxy :: Proxy KoiosApi)
 
 -------------------------------------------------
@@ -223,6 +232,22 @@ queryBids nftPolicy  mSellerAddr mBidderCred = do
     Just addr -> do
       let assetFilter = Just $ assetToQueryParam $ catMaybes [Just bidBeacon,Just nftBeacon, bidderId]
       sellerAddresssUTxOsApi select "eq.false" assetFilter (ExtendedPaymentAddresses [addr])  
+
+querySpecificMarketUTxO :: TxOutRef -> ClientM [MarketUTxO]
+querySpecificMarketUTxO outRef =
+    specificMarketUTxOsApi select "eq.false" Nothing (ExtendedUTxOList [outRef])  
+  where
+    select =
+      toText $ intercalate ","
+        [ "is_spent"
+        , "tx_hash"
+        , "tx_index"
+        , "address"
+        , "stake_address"
+        , "value"
+        , "inline_datum"
+        , "asset_list"
+        ]
 
 -------------------------------------------------
 -- Helper Functions

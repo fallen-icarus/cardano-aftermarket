@@ -17,9 +17,10 @@ cardano-aftermarket scripts \
   --out-file $scriptFile
 
 ## Create and submit the transaction.
-cardano-cli transaction build \
-  --tx-in ff1dac91907833fb4b48fb31c0fb8ffeb10696e6247e110d98449ac0ce8e1938#0 \
-  --tx-out "$(cat "${walletDir}01.addr") + 30000000 lovelace" \
+cardano-cli conway transaction build \
+  --tx-in d725ebf0adcc114251b993389032e4d67bfbdcaeaeb368edf540877d86562167#0 \
+  --tx-in ccf77ee5926704fbbbf7408ff82e11ed3270696b407c6ca9bef03a757d439a93#0 \
+  --tx-out "$(cat "${walletDir}01.addr") + 36000000 lovelace" \
   --tx-out-reference-script-file $scriptFile \
   --change-address "$(cat "${walletDir}01.addr")" \
   --testnet-magic 1 \
@@ -31,6 +32,6 @@ cardano-cli transaction sign \
   --testnet-magic 1 \
   --out-file "${tmpDir}tx.signed"
 
-cardano-cli transaction submit \
-  --testnet-magic 1 \
+cardano-aftermarket submit \
+  --testnet \
   --tx-file "${tmpDir}tx.signed"

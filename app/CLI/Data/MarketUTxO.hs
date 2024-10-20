@@ -17,7 +17,9 @@ import CardanoAftermarket
 data MarketDatum
   = Spot SpotDatum
   | Auction AuctionDatum
-  | Bid BidDatum
+  | SpotBid SpotBidDatum
+  | ClaimBid ClaimBidDatum
+  | AcceptedBid AcceptedBidDatum
   deriving (Show)
 
 instance ToJSON MarketDatum where
@@ -29,8 +31,16 @@ instance ToJSON MarketDatum where
     object [ "type" .= ("auction" :: Text)
            , "datum" .= datum
            ]
-  toJSON (Bid datum) =
-    object [ "type" .= ("bid" :: Text)
+  toJSON (SpotBid datum) =
+    object [ "type" .= ("spot_bid" :: Text)
+           , "datum" .= datum
+           ]
+  toJSON (ClaimBid datum) =
+    object [ "type" .= ("claim_bid" :: Text)
+           , "datum" .= datum
+           ]
+  toJSON (AcceptedBid datum) =
+    object [ "type" .= ("accepted_bid" :: Text)
            , "datum" .= datum
            ]
 
@@ -58,9 +68,13 @@ instance FromJSON MarketUTxO where
       concatRef hash idx = hash <> "#" <> show idx
 
       parseDatum :: Value -> Maybe MarketDatum
-      parseDatum v = (Spot <$> decodeDatum @SpotDatum v)
-                 <|> (Auction <$> decodeDatum @AuctionDatum v)
-                 <|> (Bid <$> decodeDatum @BidDatum v)
+      parseDatum v = asum
+        [ Spot <$> decodeDatum @SpotDatum v
+        , Auction <$> decodeDatum @AuctionDatum v
+        , SpotBid <$> decodeDatum @SpotBidDatum v
+        , ClaimBid <$> decodeDatum @ClaimBidDatum v
+        , AcceptedBid <$> decodeDatum @AcceptedBidDatum v
+        ]
 
 instance ToJSON MarketUTxO where
   toJSON MarketUTxO{..} =
@@ -83,6 +97,10 @@ prettyMarketUTxO network MarketUTxO{utxoRef=(TxOutRef hash idx),..} =
        , mempty
        ]
   where
+    config = case network of
+      Mainnet -> mainnetConfig
+      PreProdTestnet -> preprodConfig
+
     interspersePlus :: [Doc AnsiStyle] -> [Doc AnsiStyle]
     interspersePlus [] = []
     interspersePlus [x] = [x]
@@ -113,8 +131,8 @@ prettyMarketUTxO network MarketUTxO{utxoRef=(TxOutRef hash idx),..} =
            , annotate (colorDull Cyan) "price:"
            , indent 2 $ align $ vsep $ interspersePlus $ map prettyPrice salePrice
            ]
-    prettyMarketDatum (Bid BidDatum{bid = Prices bid, ..}) =
-      vsep [ annotate (colorDull Cyan) "type:" <+> pretty @Text "Bid"
+    prettyMarketDatum (SpotBid SpotBidDatum{bid = Prices bid, ..}) =
+      vsep [ annotate (colorDull Cyan) "type:" <+> pretty @Text "SpotBid"
            , annotate (colorDull Cyan) "bidder_credential:" <+> prettyCredential bidderCredential
            , annotate (colorDull Cyan) "nft_policy_id:" <+> pretty (show @Text nftPolicyId)
            , annotate (colorDull Cyan) "bid_deposit:" <+> pretty (Lovelace bidDeposit)
@@ -133,4 +151,39 @@ prettyMarketUTxO network MarketUTxO{utxoRef=(TxOutRef hash idx),..} =
            , indent 2 $ align $ vsep $ map (pretty . showTokenName) nftNames
            , annotate (colorDull Cyan) "starting_price:"
            , indent 2 $ align $ vsep $ interspersePlus $ map prettyPrice startingPrice
+           ]
+    prettyMarketDatum (ClaimBid ClaimBidDatum{bid = Prices bid, ..}) =
+      vsep [ annotate (colorDull Cyan) "type:" <+> pretty @Text "ClaimBid"
+           , annotate (colorDull Cyan) "bidder_credential:" <+> prettyCredential bidderCredential
+           , annotate (colorDull Cyan) "nft_policy_id:" <+> pretty (show @Text nftPolicyId)
+           , annotate (colorDull Cyan) "bid_deposit:" <+> pretty (Lovelace bidDeposit)
+           , annotate (colorDull Cyan) "bid_expiration:" <+> (flip (maybe "none") bidExpiration $ 
+               \posix@(POSIXTime time) ->
+                  pretty (posixTimeToSlot config posix) <+> tupled [pretty time <+> "milliseconds"])
+           , let time = getPOSIXTime claimExpiration in
+               annotate (colorDull Cyan) "claim_expiration:" 
+                 <+> pretty (posixTimeToSlot config claimExpiration)
+                 <+> tupled [pretty time <+> "posix"]
+           , annotate (colorDull Cyan) "nfts:"
+           , indent 2 $ align $ vsep $ map (pretty . showTokenName) nftNames
+           , annotate (colorDull Cyan) "bid:"
+           , indent 2 $ align $ vsep $ interspersePlus $ map prettyPrice bid
+           ]
+    prettyMarketDatum (AcceptedBid AcceptedBidDatum{bid = Prices bid, ..}) =
+      vsep [ annotate (colorDull Cyan) "type:" <+> pretty @Text "AcceptedBid"
+           , annotate (colorDull Cyan) "bidder_credential:" <+> prettyCredential bidderCredential
+           , annotate (colorDull Cyan) "nft_policy_id:" <+> pretty (show @Text nftPolicyId)
+           , annotate (colorDull Cyan) "bid_deposit:" <+> pretty (Lovelace bidDeposit)
+           , annotate (colorDull Cyan) "seller_deposit:" <+> pretty (Lovelace sellerDeposit)
+           , annotate (colorDull Cyan) "payment_address:" <+> 
+               pretty (either (const "failed to convert to bech32") fst $ 
+                 plutusToBech32 network paymentAddress)
+           , let time = getPOSIXTime claimExpiration in
+               annotate (colorDull Cyan) "claim_expiration:" 
+                 <+> pretty (posixTimeToSlot config claimExpiration)
+                 <+> tupled [pretty time <+> "posix"]
+           , annotate (colorDull Cyan) "nfts:"
+           , indent 2 $ align $ vsep $ map (pretty . showTokenName) nftNames
+           , annotate (colorDull Cyan) "bid:"
+           , indent 2 $ align $ vsep $ interspersePlus $ map prettyPrice bid
            ]

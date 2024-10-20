@@ -103,11 +103,11 @@ regressionTest1 = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
       , outputs = flip map spotUTxOs $ \(ref, Just SpotDatum{salePrice=Prices salePrice,..}) ->
@@ -120,7 +120,7 @@ regressionTest1 = do
             , outputDatum = OutputDatum $ toDatum $ PaymentDatum (BeaconId beaconCurrencySymbol,ref)
             , outputReferenceScript = toReferenceScript Nothing
             }
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       }
 
 -- | Purchase multiple valid Spot UTxOs, each one for different nfts. The Spot UTxOs each have 
@@ -262,11 +262,11 @@ regressionTest2 = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
       , outputs = flip map spotUTxOs $ \(ref, Just SpotDatum{salePrice=Prices salePrice,..}) ->
@@ -279,7 +279,7 @@ regressionTest2 = do
             , outputDatum = OutputDatum $ toDatum $ PaymentDatum (BeaconId beaconCurrencySymbol,ref)
             , outputReferenceScript = toReferenceScript Nothing
             }
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       }
 
 -- | Purchase a single valid Spot UTxO. The Spot UTxO has only one NFT for sale and only one asset 
@@ -372,11 +372,11 @@ regressionTest3 = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
       , outputs = flip map spotUTxOs $ \(ref, Just SpotDatum{salePrice=Prices salePrice,..}) ->
@@ -389,7 +389,7 @@ regressionTest3 = do
             , outputDatum = OutputDatum $ toDatum $ PaymentDatum (BeaconId beaconCurrencySymbol,ref)
             , outputReferenceScript = toReferenceScript Nothing
             }
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       }
 
 -- | Purchase multiple valid Spot UTxOs that are located at different addresses. 
@@ -539,11 +539,11 @@ regressionTest4 = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
       , outputs = flip map spotUTxOs $ \(ref, Just SpotDatum{salePrice=Prices salePrice,..}) ->
@@ -556,7 +556,7 @@ regressionTest4 = do
             , outputDatum = OutputDatum $ toDatum $ PaymentDatum (BeaconId beaconCurrencySymbol,ref)
             , outputReferenceScript = toReferenceScript Nothing
             }
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       }
 
 -- | Purchase multiple valid Spot UTxOs with unrelated outputs between the payment outputs.
@@ -706,11 +706,11 @@ regressionTest5 = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
       , outputs = mconcat
@@ -749,7 +749,7 @@ regressionTest5 = do
                 , outputReferenceScript = toReferenceScript Nothing
                 }
           ]
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       }
 
 -------------------------------------------------

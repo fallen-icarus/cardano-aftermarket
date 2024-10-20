@@ -404,7 +404,7 @@ regressionTest4 = do
       , extraKeyWitnesses = [sellerPubKey]
       }
 
--- | Close a single valid Auction UTxO. The Auction UTxO has only one NFT for auction. AcceptBid is
+-- | Close a single valid Auction UTxO. The Auction UTxO has only one NFT for auction. AcceptSpotBid is
 -- used to spend the Auction UTxO, and BurnBeacons is used for the beacon script.
 regressionTest5 :: MonadEmulator m => m ()
 regressionTest5 = do
@@ -481,22 +481,22 @@ regressionTest5 = do
             { inputId = auctionRef
             , inputWitness = 
                 SpendWithPlutusReference aftermarketRef InlineDatum $ 
-                  toRedeemer AcceptBid
+                  toRedeemer AcceptSpotBid
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       , extraKeyWitnesses = [sellerPubKey]
       }
 
--- | Close a single valid Auction UTxO. The Auction UTxO has only one NFT for auction. AcceptBid is
+-- | Close a single valid Auction UTxO. The Auction UTxO has only one NFT for auction. AcceptSpotBid is
 -- used to spend the Auction UTxO, and CreateCloseOrUpdateMarketUTxOs is used for the beacon script.
 regressionTest6 :: MonadEmulator m => m ()
 regressionTest6 = do
@@ -573,18 +573,18 @@ regressionTest6 = do
             { inputId = auctionRef
             , inputWitness = 
                 SpendWithPlutusReference aftermarketRef InlineDatum $ 
-                  toRedeemer AcceptBid
+                  toRedeemer AcceptSpotBid
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       , extraKeyWitnesses = [sellerPubKey]
       }
 

@@ -1,31 +1,57 @@
 use aiken/dict
-use aiken/transaction.{Transaction,Input,Output,ScriptContext} as tx
+use aiken/transaction.{ScriptContext} as tx
 use aiken/transaction/certificate.{CredentialRegistration}
-use aiken/transaction/credential.
-  { Address
-  , Inline
-  , ScriptCredential
-  }
+use aiken/transaction/credential as cred
 use aiken/transaction/value
 
 use cardano_aftermarket/data/core.{ScriptHash}
-use cardano_aftermarket/data/datums.
-  { MarketDatum
-  , SpotDatum
-  , AuctionDatum
-  , BidDatum
-  }
-use cardano_aftermarket/data/redeemers.{MarketRedeemer, BeaconsRedeemer, PaymentObserverRedeemer}
-use cardano_aftermarket/utils.{trace_if_false}
+use cardano_aftermarket/data/datums.{MarketDatum}
+use cardano_aftermarket/data/redeemers.{MarketRedeemer, BeaconsRedeemer, MarketObserverRedeemer}
 
 use cardano_aftermarket/market_utxo_validation.{market_beacons_destination_check}
-use cardano_aftermarket/payment_validation.{valid_payment}
+use cardano_aftermarket/observer_validation.{valid_payment}
+use cardano_aftermarket/utils.{trace_if_false}
+
+// The Aftermarket is a secondary market for selling NFTs. It makes certain design choices based on
+// the assumption that NFTs are unique! Therefore, using this market place with FTs can
+// have result in unintended behavior.
+//
+// The aftermarket supports two types of trades:
+// 1) Spot trades: trades that can be immediately executed and fulfilled by a buyer without any
+// further input from the seller.
+// 2) Auction trades: The seller puts up the NFTs and signals a starting price, and buyers can
+// places bid.
+//
+// The auctions are further divided into two types:
+// 1) Auctions where the seller finalizes the deal.
+// 2) Auctions where the buyer finalizes the deal.
+//
+// The two types of auctions are required to support compositions with other DApps. For some DApps,
+// like cardano-loans, the buyer must be able to change the lender address in the same transaction
+// where the bond is purchased on the secondary market. This requires the buyer to finalize the
+// deal. (The buyer already finalizes the deal with spot trades.) However, there may be other DApps
+// where the seller must finalize in order to safely compose with other DApps. Therefore, support
+// for both types of auctions was added. 
+//
+// For the seller finalized auctions, the seller must send the NFTs to the buyer's specified
+// address in order to claim the bid amount.
+//
+// For the buyer finalized auctions, buyers do not actually store the bid amount in their Bid UTxO.
+// Instead, the datum says how much they are willing to pay. The seller can accept this bid by
+// evolving the Bid UTxO into an AcceptedBid UTxO with the NFTs to be claimed. The buyer has a
+// certain amount of time to claim the NFTs before the seller can take them back. If the buyer backs
+// out (ie, does not claim the NFTs), the deposit the buyer used for the Bid UTxO's minUTxOValue
+// will be claimed by the seller. This "deposit" helps compensate the seller for any lost
+// opportunity from accepting one bid over another. The buyers can store extra ADA (above the
+// required minUTxOValue) to make their bid more attractive since it means the seller has less risk
+// from accepting their bid over others.
 
 // ----------------------------------------------
 // Aftermarket Validator Script
 // ----------------------------------------------
 // This smart contract is the payment credential for all aftermarket addresses. To minimize
-// redundant executions, it will delegate the checks to one of the other protocol scripts.
+// redundant executions, it will delegate the checks to one of the other protocol scripts. This one
+// payment script can manage the sales of all possible NFTs.
 validator() {
   fn aftermarket_script(datum: MarketDatum, redeemer: MarketRedeemer, ctx: ScriptContext) -> Bool {
     when redeemer is {
@@ -36,17 +62,17 @@ validator() {
 
         // Extract the required information from the script context.
         expect ScriptContext(
-          Transaction{inputs,redeemers,withdrawals,extra_signatories..}, 
+          tx.Transaction{inputs,redeemers,withdrawals,extra_signatories..}, 
           tx.Spend(out_ref)
         ) = ctx
 
         // Get this input being spent to extract the borrower's staking credential.
-        expect Some(Input(_, Output(Address(_,stake), val, ..))) = tx.find_input(inputs,out_ref)
+        expect Some(tx.Input(_, tx.Output(cred.Address(_,stake), val, ..))) = tx.find_input(inputs,out_ref)
 
         // Get the beacon id from the datum.
         let beacon_policy_id = when datum is {
-          SpotDatum{beacon_policy_id,..} -> beacon_policy_id
-          AuctionDatum{beacon_policy_id,..} -> beacon_policy_id
+          datums.SpotDatum{beacon_policy_id,..} -> beacon_policy_id
+          datums.AuctionDatum{beacon_policy_id,..} -> beacon_policy_id
           _ -> error @"UTxO is not a seller's UTxO"
         }
 
@@ -58,6 +84,8 @@ validator() {
             utils.staking_credential_approves(stake,withdrawals,extra_signatories)
           ),
 
+          // If there are beacons present, the beacon script must be executed as either a staking
+          // script or a minting policy.
           when value.tokens(val,beacon_policy_id) |> dict.to_list(_) is {
             [] -> True
             _ -> trace_if_false(
@@ -80,22 +108,23 @@ validator() {
 
         // Extract the required information from the script context.
         expect ScriptContext(
-          Transaction{inputs,redeemers,withdrawals,extra_signatories..}, 
+          tx.Transaction{inputs,redeemers,withdrawals,extra_signatories..}, 
           tx.Spend(out_ref)
         ) = ctx
 
         // Get this input being spent to extract the borrower's staking credential.
-        expect Some(Input(_, Output(Address(_,stake), val, ..))) = tx.find_input(inputs,out_ref)
+        expect Some(tx.Input(_, tx.Output(cred.Address(_,stake), val, ..))) = tx.find_input(inputs,out_ref)
 
-        // Get the beacon id and bidder credential from the BidDatum.
+        // Get the beacon id and bidder credential from the bid datums.
         let (beacon_policy_id,bidder_credential) = when datum is {
-          BidDatum{beacon_policy_id,bidder_credential,..} -> (beacon_policy_id, bidder_credential)
+          datums.SpotBidDatum{beacon_policy_id,bidder_credential,..} -> (beacon_policy_id, bidder_credential)
+          datums.ClaimBidDatum{beacon_policy_id,bidder_credential,..} -> (beacon_policy_id, bidder_credential)
           _ -> error @"UTxO is not a Bid UTxO"
         }
 
         when value.tokens(val,beacon_policy_id) |> dict.to_list(_) is {
           [] -> {
-            // The address owner has custody.
+            // The address owner has custody of invalid UTxOs.
             trace_if_false( 
               @"Address owner did not approve",
               utils.staking_credential_approves(stake,withdrawals,extra_signatories)
@@ -119,7 +148,7 @@ validator() {
               trace_if_false( 
                 @"Bidder did not approve",
                 utils.staking_credential_approves(
-                  Some(Inline(bidder_credential)),
+                  Some(cred.Inline(bidder_credential)),
                   withdrawals,
                   extra_signatories
                 )
@@ -130,59 +159,59 @@ validator() {
       }
 
       redeemers.PurchaseSpot -> {
-        // Purchase a Spot UTxO. This delegates the checks to the payment observer script.
+        // Purchase a Spot UTxO. This delegates the checks to the aftermarket observer script.
 
         // Extract out the required information from the script context.
         expect ScriptContext(
-          Transaction{redeemers,..},
+          tx.Transaction{redeemers,..},
           tx.Spend(_)
         ) = ctx
 
-        // Get the payment_observer_hash from the SpotDatum. All valid Spot UTxOs are 
-        // guaranteed to have the proper payment_observer_hash in the datum.
-        let (payment_observer_hash,beacon_policy_id) = when datum is {
-          SpotDatum{payment_observer_hash,beacon_policy_id,..} -> 
-            (payment_observer_hash,beacon_policy_id)
+        // Get the aftermarket_observer_hash from the SpotDatum. All valid Spot UTxOs are 
+        // guaranteed to have the proper aftermarket_observer_hash in the datum.
+        let (aftermarket_observer_hash,beacon_policy_id) = when datum is {
+          datums.SpotDatum{aftermarket_observer_hash,beacon_policy_id,..} -> 
+            (aftermarket_observer_hash,beacon_policy_id)
           _ -> error @"UTxO is not a Spot UTxO"
         }
 
-        let req_redeemer: Data = redeemers.ObservePayment(beacon_policy_id) // Cast to Data type.
+        let req_redeemer: Data = redeemers.ObserveAftermarket(beacon_policy_id) // Cast to Data type.
 
-        // The payment_observer_script must be executed with the ObservePayment redeemer. This
-        // redeemer can only be used with a staking execution. The payment_observer_script only has
+        // The aftermarket_observer_script must be executed with the ObserveAftermarket redeemer. This
+        // redeemer can only be used with a staking execution. The aftermarket_observer_script only has
         // one possible redeemer that can be used.
         trace_if_false(
-          @"Payment observer script not executed with proper redeemer",
-          utils.script_executed_with_redeemer(redeemers, req_redeemer, payment_observer_hash)
+          @"Aftermarket observer script not executed with proper redeemer",
+          utils.script_executed_with_redeemer(redeemers, req_redeemer, aftermarket_observer_hash)
         )
       }
 
-      redeemers.AcceptBid -> {
-        // Accept a Bid UTxO. This delegates the checks to the payment observer script, but also
-        // directly checks for the seller's approval. For convenience, this redeemer can also be
-        // used to close the associated Auction UTxOs.
+      redeemers.AcceptSpotBid -> {
+        // Accept a Spot Bid UTxO. This delegates the checks to the aftermarket observer script, but
+        // also directly checks for the seller's approval. For convenience, this redeemer can also
+        // be used to close the associated Auction UTxOs.
 
         // Extract out the required information from the script context.
         expect ScriptContext(
-          Transaction{inputs,withdrawals,extra_signatories,redeemers,..},
+          tx.Transaction{inputs,withdrawals,extra_signatories,redeemers,..},
           tx.Spend(out_ref)
         ) = ctx
 
-        // Get the address and value of the input being spent.
-        expect Some(Input(_,Output(Address(_,stake),..))) = tx.find_input(inputs,out_ref)
+        // Get the address of the input being spent.
+        expect Some(tx.Input(_,tx.Output(cred.Address(_,stake),..))) = tx.find_input(inputs,out_ref)
 
-        // Get the payment_observer_hash from either the BidDatum or the AuctionDatum. All valid
-        // Auction UTxOs and Bid UTxOs are guaranteed to have the proper payment_observer_hash in
-        // the datum.
-        let (payment_observer_hash, beacon_policy_id) = when datum is {
-          BidDatum{payment_observer_hash,beacon_policy_id,..} -> 
-            (payment_observer_hash, beacon_policy_id)
-          AuctionDatum{payment_observer_hash,beacon_policy_id,..} ->
-            (payment_observer_hash, beacon_policy_id)
-          _ -> error @"UTxO is not an Auction UTxO or a Bid UTxO"
+        // Get the aftermarket_observer_hash from either the SpotBidDatum or the AuctionDatum. All
+        // valid Auction UTxOs and SpotBid UTxOs are guaranteed to have the proper
+        // aftermarket_observer_hash in the datum.
+        let (aftermarket_observer_hash, beacon_policy_id) = when datum is {
+          datums.SpotBidDatum{aftermarket_observer_hash,beacon_policy_id,..} -> 
+            (aftermarket_observer_hash, beacon_policy_id)
+          datums.AuctionDatum{aftermarket_observer_hash,beacon_policy_id,..} ->
+            (aftermarket_observer_hash, beacon_policy_id)
+          _ -> error @"UTxO is not an Auction UTxO or a SpotBid UTxO"
         }
         
-        let req_redeemer: Data = redeemers.ObservePayment(beacon_policy_id) // Cast to Data type.
+        let req_redeemer: Data = redeemers.ObserveAftermarket(beacon_policy_id) // Cast to Data type.
 
         and {
           trace_if_false( 
@@ -190,13 +219,129 @@ validator() {
             utils.staking_credential_approves(stake,withdrawals,extra_signatories)
           ),
 
-          // The payment_observer_script must be executed with the ObserveAddressUpdate redeemer. This
-          // redeemer can only be used with a staking execution. The payment_observer_script only has
+          // The aftermarket_observer_script must be executed with the ObserveAftermarket redeemer. This
+          // redeemer can only be used with a staking execution. The aftermarket_observer_script only has
           // one possible redeemer that can be used.
           trace_if_false(
-            @"Payment observer script not executed with proper redeemer",
-            utils.script_executed_with_redeemer(redeemers, req_redeemer, payment_observer_hash)
+            @"Aftermarket observer script not executed with proper redeemer",
+            utils.script_executed_with_redeemer(redeemers, req_redeemer, aftermarket_observer_hash)
           )
+        }
+      }
+
+      redeemers.AcceptClaimBid{..} -> {
+        // Accept a ClaimBid UTxO. This delegates the checks to the aftermarket observer script, but
+        // also directly checks for the seller's approval. For convenience, this redeemer can also
+        // be used to close the associated Auction UTxOs.
+
+        // Extract out the required information from the script context.
+        expect ScriptContext(
+          tx.Transaction{inputs,withdrawals,extra_signatories,redeemers,..},
+          tx.Spend(out_ref)
+        ) = ctx
+
+        // Get the address and value of the input being spent.
+        expect Some(tx.Input(_,tx.Output(cred.Address(_,stake),..))) = tx.find_input(inputs,out_ref)
+
+        // Get the aftermarket_observer_hash from either the BidDatum or the AuctionDatum. All valid
+        // Auction UTxOs and ClaimBid UTxOs are guaranteed to have the proper
+        // aftermarket_observer_hash in the datum.
+        let (aftermarket_observer_hash, beacon_policy_id) = when datum is {
+          datums.ClaimBidDatum{aftermarket_observer_hash,beacon_policy_id,..} -> 
+            (aftermarket_observer_hash, beacon_policy_id)
+          datums.AuctionDatum{aftermarket_observer_hash,beacon_policy_id,..} ->
+            (aftermarket_observer_hash, beacon_policy_id)
+          _ -> error @"UTxO is not an Auction UTxO or a ClaimBid UTxO"
+        }
+        
+        let req_redeemer: Data = redeemers.ObserveAftermarket(beacon_policy_id) // Cast to Data type.
+
+        and {
+          trace_if_false( 
+            @"Seller did not approve",
+            utils.staking_credential_approves(stake,withdrawals,extra_signatories)
+          ),
+
+          // The aftermarket_observer_script must be executed with the ObserveAftermarket redeemer. This
+          // redeemer can only be used with a staking execution. The aftermarket_observer_script only has
+          // one possible redeemer that can be used.
+          trace_if_false(
+            @"Aftermarket observer script not executed with proper redeemer",
+            utils.script_executed_with_redeemer(redeemers, req_redeemer, aftermarket_observer_hash)
+          )
+        }
+      }
+
+      redeemers.ClaimAcceptedBid -> {
+        // Claim an AcceptedBid UTxO. This delegates the checks to the aftermarket observer script,
+        // but also directly checks for the seller's approval. For convenience, this redeemer can
+        // also be used to close the associated Auction UTxOs.
+
+        // Extract out the required information from the script context.
+        expect ScriptContext(
+          tx.Transaction{redeemers,..},
+          tx.Spend(_)
+        ) = ctx
+
+        // Get the aftermarket_observer_hash from the AcceptedBidDatum. All valid AcceptedBid UTxOs
+        // are guaranteed to have the proper aftermarket_observer_hash in the datum.
+        let (aftermarket_observer_hash, beacon_policy_id) = when datum is {
+          datums.AcceptedBidDatum{aftermarket_observer_hash,beacon_policy_id,..} -> 
+            (aftermarket_observer_hash, beacon_policy_id)
+          _ -> error @"UTxO is not an AcceptedBidDatum"
+        }
+        
+        let req_redeemer: Data = redeemers.ObserveAftermarket(beacon_policy_id) // Cast to Data type.
+
+        // The aftermarket_observer_script must be executed with the ObserveAftermarket redeemer. This
+        // redeemer can only be used with a staking execution. The aftermarket_observer_script only has
+        // one possible redeemer that can be used.
+        trace_if_false(
+          @"Aftermarket observer script not executed with proper redeemer",
+          utils.script_executed_with_redeemer(redeemers, req_redeemer, aftermarket_observer_hash)
+        )
+      }
+
+      redeemers.UnlockUnclaimedAcceptedBid -> {
+        // Unlock an AcceptedBid UTxO whose claim period has passed. This delegates the checks to
+        // the aftermarket observer script, but also directly checks for the seller's approval. 
+
+        // Extract out the required information from the script context.
+        expect ScriptContext(
+          tx.Transaction{inputs,withdrawals,extra_signatories,redeemers,..},
+          tx.Spend(out_ref)
+        ) = ctx
+
+        // Get the address and value of the input being spent.
+        expect Some(tx.Input(_, tx.Output(cred.Address(_,stake), val, ..))) = tx.find_input(inputs,out_ref)
+
+        // Get the aftermarket_observer_hash from the AcceptedBidDatum. All valid AcceptedBid UTxOs
+        // are guaranteed to have the proper aftermarket_observer_hash in the datum.
+        let (aftermarket_observer_hash, beacon_policy_id) = when datum is {
+          datums.AcceptedBidDatum{aftermarket_observer_hash,beacon_policy_id,..} -> 
+            (aftermarket_observer_hash, beacon_policy_id)
+          _ -> error @"UTxO is not an AcceptedBidDatum"
+        }
+        
+        let req_redeemer: Data = redeemers.ObserveAftermarket(beacon_policy_id) // Cast to Data type.
+
+        and {
+          trace_if_false( 
+            @"Seller did not approve",
+            utils.staking_credential_approves(stake,withdrawals,extra_signatories)
+          ),
+
+          when value.tokens(val,beacon_policy_id) |> dict.to_list(_) is {
+            [] -> True
+            _ -> 
+              // The aftermarket_observer_script must be executed with the ObserveAftermarket redeemer. This
+              // redeemer can only be used with a staking execution. The aftermarket_observer_script only has
+              // one possible redeemer that can be used.
+              trace_if_false(
+                @"Aftermarket observer script not executed with proper redeemer",
+                utils.script_executed_with_redeemer(redeemers, req_redeemer, aftermarket_observer_hash)
+              )
+          }
         }
       }
     }
@@ -204,108 +349,33 @@ validator() {
 }
 
 // ----------------------------------------------
-// Payment Observer Script
+// Aftermarket Observer Script
 // ----------------------------------------------
-// This script is used as a staking observer script to oversee all purchases.
-validator(aftermarket_script_hash: ScriptHash) {
-  fn payment_observer_script(redeemer: PaymentObserverRedeemer, ctx: ScriptContext) -> Bool {
+// This script is used as a staking observer script to oversee all purchases, and acceptances.
+// NOTE: This could possibly be broken up to decrease fees since reference script sizes impact the
+// calculated fee. This could decrease the fee whenever only one action is required, but could
+// increase the fee if all actions are required.
+//
+// It must ensure:
+// 1) Buyers give the sellers the sale price + the seller's deposit back for spot purchases. 
+// 2) Sellers give the buyer the required NFTs + the buyer's deposit back for SpotBids. 
+// 3) Sellers properly create an AcceptedBid UTxO with the NFTs + seller's deposit + buyer's 
+// deposit from the associated ClaimBid UTxO.
+// 4) Buyers give the seller the bid amount + the seller's deposit for AcceptedBid UTxOs.
+// 5) Unnecessary AcceptedBid UTxOs are *never* created. This prevents the seller from being able to
+// mint BidderIds for buyers.
+// 6) If the aftermarket beacon policy is executed with BurnBeacons, then the proper amount of
+// beacons must be burned. If the beacon policy is executed with CreateCloseOrUpdateMarketUTxOs,
+// then the actual beacons minted/burned are left to the beacon policy to enforce. Since this script
+// always checks that no excess AcceptedBid UTxOs are ever created, the beacon policy cannot
+// accidentally allow the minting of BidderIds without the consent from the buyer.
+validator(proxy_hash: ScriptHash, aftermarket_script_hash: ScriptHash) {
+  fn aftermarket_observer_script(redeemer: MarketObserverRedeemer, ctx: ScriptContext) -> Bool {
     when redeemer is {
-      redeemers.ObservePayment{beacon_policy_id} -> {
-        // Observer payments for both spot purchases and bid acceptances. For convenience, this
-        // script will also validate Auction UTxOs spent with the AcceptBid spending redeemer since
-        // this may be cheaper than using CloseOrUpdateSellerUTxO.
-        //
-        // To figure out which action is meant for each UTxO, the inputs are compared against the
-        // redeemers map. The spending redeemer used determines which action is taking place for
-        // that UTxO:
-        // - AcceptBid -> accepting a Bid UTxO or closing an Auction UTxO
-        // - PurchaseSpot -> buying a Spot UTxO
-        //
-        // At a high level, every input either has required outputs and/or required beacon token
-        // mints/burns. So while matching up inputs and redeemers, the smart contract will build up
-        // a list of required outputs and required mints/burns. Then, it will check the outputs and
-        // tx mint to see if the requirements are met for the given inputs.
-        //
-        // To improve performance, the required outputs are assumed to be in the same order as the 
-        // inputs. The outputs do not need to be grouped together and there can be unrelated outputs
-        // mixed in between the required outputs. You can think of it like this:
-        // - There are two types of required outputs: spot payment output, and auction payment
-        // output.
-        // - These output types are treated separately.
-        // - Filter all inputs for a given action. Then, filter all outputs for a specific type that
-        // corresponds to that action. As long as the inputs and outputs are in the same order, the
-        // transaction will succeed.
-        //
-        // For example, if you have this input ordering:
-        // 1) spotPurchase1 input
-        // 2) bidAcceptance1 input
-        // 3) spotPurchase2 input
-        // 4) bidAcceptance2 input
-        //
-        // Then these are some of the possible valid output orderings:
-        // 1) bid1 payment output
-        // 2) spot1 payment output
-        // 3) spot2 payment output
-        // 4) bid2 payment output
-        //
-        // or
-        //
-        // 1) spot1 payment output
-        // 2) bid1 payment output
-        // 3) bid2 payment output
-        // 4) spot2 payment output
-        //
-        // These are the key requirements for the above example's output ordering:
-        // 1) spot1 payment output MUST appear before spot1 payment output
-        // 2) bid1 payment output MUST appear before bid2 payment output
-        // Any ordering that satisfies these two requirements is valid.
-        //
-        //---------------------------------------
-        // Spot Purchase Validation
-        //---------------------------------------
-        // In order to purchase a Spot UTxO, all of the following must be true for all
-        // spot inputs:
-        // 1) The input must be spent using PurchaseSpot.
-        // 2) The input must have a SpotDatum.
-        // 3) The input must have the required beacons.
-        // 4) There must be a corresponding spot payment output with the following characteristics:
-        //    a) It must locked at the payment_address from the SpotDatum.
-        //    b) Contains the sale_price assets from the SpotDatum + the sale_deposit amount of ada.
-        //    c) Contains the proper hard-coded inline datum: 
-        //       (beacon_policy_id, spot_utxo_output_ref)
-        // 5) Either all beacons attached to this input must be burned or the
-        //    beacon_script must be executed using CreateCloseOrUpdateMarketUTxOs.
-        //
-        //---------------------------------------
-        // Bid Acceptance Validation
-        //---------------------------------------
-        // In order to accept a Bid UTxO, all of the following must be true for all
-        // bid inputs:
-        // 1) The input must be spent using AcceptBid.
-        // 2) The input must have a BidDatum.
-        // 3) The input must have the required beacons.
-        // 4) There must be a corresponding auction payment output with the following characteristics:
-        //    a) It must locked at the payment_address from the BidDatum.
-        //    b) Contains the NFTs from the BidDatum + the bid_deposit amount of ada.
-        //    c) Contains the proper hard-coded inline datum: 
-        //       (beacon_policy_id, bid_utxo_output_ref)
-        // 5) Either all beacons attached to this input must be burned or the
-        //    beacon_script must be executed using CreateCloseOrUpdateMarketUTxOs.
-        //
-        //---------------------------------------
-        // Closing Auction UTxO Validation
-        //---------------------------------------
-        // In order to close an Auction UTxO, all of the following must be true for all
-        // auction inputs:
-        // 1) The input must be spent using AcceptBid.
-        // 2) The input must have a AuctionDatum.
-        // 3) The input must have the required beacons.
-        // 4) Either all beacons attached to this input must be burned or the
-        //    beacon_script must be executed using CreateCloseOrUpdateMarketUTxOs.
-
+      redeemers.ObserveAftermarket{beacon_policy_id} -> {
         // Extract the required information from the script context.
         expect ScriptContext( 
-          Transaction{inputs,outputs,redeemers,mint,..}, 
+          tx.Transaction{inputs,outputs,redeemers,mint,validity_range,withdrawals,extra_signatories,..}, 
           tx.WithdrawFrom(_)
         ) = ctx
 
@@ -315,17 +385,21 @@ validator(aftermarket_script_hash: ScriptHash) {
           outputs,
           redeemers,
           value.from_minted_value(mint) |> value.tokens(_, beacon_policy_id),
-          core.to_beacon_id(beacon_policy_id),
-          ScriptCredential(aftermarket_script_hash),
+          beacon_policy_id,
+          cred.ScriptCredential(aftermarket_script_hash),
+          validity_range,
+          proxy_hash,
+          withdrawals,
+          extra_signatories
         )
       }
 
-      redeemers.RegisterPaymentObserverScript -> {
+      redeemers.RegisterAftermarketObserverScript -> {
         // Register the observer script for use as a staking script. It cannot be 
         // delegated or deregistered.
         when ctx is {
           ScriptContext(_, tx.Publish(CredentialRegistration(_))) -> True
-          _ -> error "This redeemer can only be used to register the payment observer script"
+          _ -> error "This redeemer can only be used to register the aftermarket observer script"
         }
       }
     }
@@ -338,10 +412,14 @@ validator(aftermarket_script_hash: ScriptHash) {
 // There are five possible beacons:
 // 1) a "Spot" beacon - representing a Spot UTxO.
 // 2) a "Auction" beacon - representing an Auction UTxO.
-// 3) a "Bid" beacon - representing a Bid UTxO.
+// 3) a "Bid" beacon - representing a Bid UTxO. This beacon is used for all Bid UTxO types.
 // 4) a Policy beacon - representing the policy id for the nfts being sold.
 // 5) a BidderId beacon - representing the credential for the bidder.
-validator(proxy_hash: ScriptHash, aftermarket_script_hash: ScriptHash, payment_observer_hash: ScriptHash) {
+validator(
+  proxy_hash: ScriptHash, 
+  aftermarket_script_hash: ScriptHash, 
+  aftermarket_observer_hash: ScriptHash
+) {
   fn beacon_script(redeemer: BeaconsRedeemer, ctx: ScriptContext) -> Bool {
     when redeemer is {
       redeemers.CreateCloseOrUpdateMarketUTxOs -> {
@@ -352,19 +430,28 @@ validator(proxy_hash: ScriptHash, aftermarket_script_hash: ScriptHash, payment_o
         // This redeemer can also be used with a staking execution in case market outputs need to 
         // be checked without minting/burning beacons.
         //
-        // By explicitly stating what valid UTxOs with beacons are, it implicitly enforces
-        // that the proper beacons are minted/burned. This design allows for closing and updating
-        // Market UTxOs in the same transaction while also improving performance. This means
-        // converting Market UTxOs in place is supported.
+        // By explicitly stating what valid UTxOs with beacons are, it implicitly enforces that the
+        // proper beacons are minted/burned. This design allows for closing and updating Market
+        // UTxOs in the same transaction while also improving performance. This means converting
+        // Market UTxOs in place is supported. The one case that makes this difficult is with
+        // AcceptedBid UTxOs; they are created by the seller, but include BidderId beacons. If the
+        // seller could mint BidderId beacons for buyers, querying the buyer's UTxOs could be DOS
+        // attacked. To prevent the seller from minting BidderId's, this script will require the
+        // aftermarket_observer_script to be executed in any transaction where AcceptedBid outputs
+        // are created. The observer script will check that no excess AcceptedBid UTxOs are created
+        // (ie, they all have a corresponding Bid UTxO).
         //
-        // This script will Auction UTxOs, Spot UTxOs, and Bid UTxOs separately. All checks on all
-        // market UTxOs must be successfull for this redeemer to successfully execute.
+        // This script will check Auction UTxOs, Spot UTxOs, and Bid UTxOs separately. All checks 
+        // on all market UTxOs must be successfull for this redeemer to successfully execute.
         //
         //---------------------------------------
         // Universal Checks
         //---------------------------------------
         // 1) All beacons must be locked at a market address with a valid staking credential.
-        // 2) All outputs with beacons must either be a Spot UTxO, Auction UTxO, or Bid UTxO.
+        // 2) All outputs with beacons must either be a Spot UTxO, Auction UTxO,
+        //    a SpotBid UTxO, or a ClaimBid UTxO. AcceptedBid UTxOs can be among the outputs, but
+        //    only if the observer script is executed in the same transaction. The observer script
+        //    checks that bidder ids are not improperly minted.
         //
         //---------------------------------------
         // Spot UTxO Checks
@@ -374,14 +461,14 @@ validator(proxy_hash: ScriptHash, aftermarket_script_hash: ScriptHash, payment_o
         //    b) The Policy Beacon for the NFTs being auctioned
         // 2) All Spot UTxOs must have the proper inline SpotDatum:
         //    a) beacon_id == this policy id
-        //    b) payment_observer_hash == hard-coded payment_observer_hash
+        //    b) aftermarket_observer_hash == hard-coded aftermarket_observer_hash
         //    c) nft_policy_id == policy id for nfts being sold in the UTxO and cannot be the beacon
         //       policy id
         //    d) nft_names == token names for nfts being sold in the UTxO and cannot be empty
-        //    f) payment_address must either use a payment pubkey, or the proxy script as the
+        //    e) payment_address must either use a payment pubkey, or the proxy script as the
         //       payment credential and a valid staking credential
-        //    g) sale_deposit > 0
-        //    h) sale_price must not be empty, must not use any protocol beacons as the assets,
+        //    f) sale_deposit > 0
+        //    g) sale_price must not be empty, must not use any protocol beacons as the assets,
         //       all prices must be > 0, and the list must be sorted.
         // 3) All Spot UTxOs must have the NFTs being sold and the sale_deposit amount
         //    of ada.
@@ -394,54 +481,81 @@ validator(proxy_hash: ScriptHash, aftermarket_script_hash: ScriptHash, payment_o
         //    b) The Policy Beacon for the NFTs being auctioned
         // 2) All Auction UTxOs must have the proper inline AuctionDatum:
         //    a) beacon_id == this policy id
-        //    b) payment_observer_hash == hard-coded payment_observer_hash
+        //    b) aftermarket_observer_hash == hard-coded aftermarket_observer_hash
         //    c) nft_policy_id == policy id for nfts being auctioned in the UTxO
         //    d) nft_names == token names for nfts being auctioned in the UTxO
-        //    f) starting_price must not be empty, must not use any protocol beacons as the assets,
+        //    e) starting_price must not be empty, must not use any protocol beacons as the assets,
         //       and all prices must be > 0
         // 3) All Auction UTxOs must have the NFTs being auctioned.
         //
         //---------------------------------------
-        // Bid UTxO Checks
+        // SpotBid UTxO Checks - a seller finalized auction
         //---------------------------------------
-        // 1) All Bid UTxOs must have exactly three beacons, one unit each:
+        // 1) All SpotBid UTxOs must have exactly three beacons, one unit each:
         //    a) A "Bid" Beacon
         //    b) The Policy Beacon for the NFTs being auctioned
         //    c) The BidderId beacon corresponding to the bidder_credential in the BidDatum
-        // 2) All Bid UTxOs must have the proper inline BidDatum:
+        // 2) All SpotBid UTxOs must have the proper inline SpotBidDatum:
         //    a) beacon_id == this policy id
-        //    b) payment_observer_hash == hard-coded payment_observer_hash
+        //    b) aftermarket_observer_hash == hard-coded aftermarket_observer_hash
         //    c) nft_policy_id == policy id for nfts being auctioned in the UTxO
         //    d) bidder_credential == credential for the BidderId in this Bid UTxO
         //    e) nft_names == token names for nfts being auctioned in the UTxO
-        //    g) payment_address must either use a payment pubkey, or the proxy script as the
+        //    f) payment_address must either use a payment pubkey, or the proxy script as the
         //       payment credential and a valid staking credential
-        //    h) bid_deposit > 0
-        //    i) bid must not be empty, must not use any protocol beacons as the assets,
+        //    g) bid_deposit > 0
+        //    h) bid must not be empty, must not use any protocol beacons as the assets,
         //       all prices must be > 0, and the list must be sorted
-        // 3) All Bid UTxOs must have exactly the bid amount and the bid_deposit amount
+        // 3) All SpotBid UTxOs must have exactly the bid amount and the bid_deposit amount
         //    of ada.
+        // 4) The credential used for the BidderId must approve the transaction.
+        //
+        //---------------------------------------
+        // ClaimBid UTxO Checks - a buyer finalized auction
+        //---------------------------------------
+        // 1) All ClaimBid UTxOs must have exactly three beacons, one unit each:
+        //    a) A "Bid" Beacon
+        //    b) The Policy Beacon for the NFTs being auctioned
+        //    c) The BidderId beacon corresponding to the bidder_credential in the BidDatum
+        // 2) All ClaimBid UTxOs must have the proper inline ClaimBidDatum:
+        //    a) beacon_id == this policy id
+        //    b) aftermarket_observer_hash == hard-coded aftermarket_observer_hash
+        //    c) nft_policy_id == policy id for nfts being auctioned in the UTxO
+        //    d) bidder_credential == credential for the BidderId in this Bid UTxO
+        //    e) nft_names == token names for nfts being auctioned in the UTxO
+        //    f) bid_deposit > 0
+        //    g) bid must not be empty, must not use any protocol beacons as the assets,
+        //       all prices must be > 0, and the list must be sorted
+        //    h) bid_expiration must be <= invalid_hereafter
+        //    i) claim_expiration must be <= invalid_hereafter
+        // 3) All ClaimBid UTxOs must have exactly the bid_deposit amount
+        //    of ada. The bid should not be included.
         // 4) The credential used for the BidderId must approve the transaction.
 
         // Extract out the required information from the script context.
-        let ScriptContext(Transaction{outputs,withdrawals,extra_signatories,..}, purpose) = ctx
+        let ScriptContext(
+          tx.Transaction{outputs,withdrawals,extra_signatories,validity_range,..}, 
+          purpose
+        ) = ctx
 
         // This redeemer must be used with either a staking execution or a minting execution. Get
         // the beacon_id from the purpose while checking the type of execution used.
         let beacon_id = when purpose is {
           tx.Mint(beacon_id) -> beacon_id
-          tx.WithdrawFrom(Inline(ScriptCredential(beacon_id))) -> beacon_id
+          tx.WithdrawFrom(cred.Inline(cred.ScriptCredential(beacon_id))) -> beacon_id
           _ -> error @"This redeemer must be used with minting or staking execution"
         }
 
+        // Check the newly created UTxOs.
         market_beacons_destination_check(
           aftermarket_script_hash,
           core.to_beacon_id(beacon_id),
           proxy_hash,
-          payment_observer_hash,
+          aftermarket_observer_hash,
           outputs,
           withdrawals,
-          extra_signatories
+          extra_signatories,
+          utils.get_upper_bound(validity_range)
         )
       }
 
@@ -451,7 +565,7 @@ validator(proxy_hash: ScriptHash, aftermarket_script_hash: ScriptHash, payment_o
 
         // Get the required information from the script context. This redeemer can only be used
         // with minting executions.
-        expect ScriptContext(Transaction{mint,..}, tx.Mint(beacon_id)) = ctx
+        expect ScriptContext(tx.Transaction{mint,..}, tx.Mint(beacon_id)) = ctx
 
         // Check that beacons are only burned.
         trace_if_false( 

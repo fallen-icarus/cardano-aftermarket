@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# This can be used to close both SpotBids and ClaimBids. This cannot be used to claim AcceptedBids!
+
 ## Variables
 mainDir="../../ignored/"
 walletDir="${mainDir}wallets/"
@@ -47,14 +49,14 @@ bidderId="${beaconPolicyId}.${bidderIdName}"
 policyBeacon="${beaconPolicyId}.${policyBeaconName}"
 
 ## Create and submit the transaction.
-cardano-cli transaction build \
-  --tx-in d16fab2eeea29a0487b5fde4b1c971e8b15ca710c3e6543a33d4ec5726a1fdbd#0 \
-  --spending-tx-in-reference b4fbe31ad2af2da42ede40d02585c3275c449e1f4caab8d3627069c7403c771d#0 \
+cardano-cli conway transaction build \
+  --tx-in 12f04c7757876d28eccd1cc5d451a9250fe29cd3067b580b1556667eff009168#0 \
+  --spending-tx-in-reference cb9675e9f74b559aa2f9196e0a985debf93621f38e24be6711f9872d40ee06ea#0 \
   --spending-plutus-script-v2 \
   --spending-reference-tx-in-inline-datum-present \
   --spending-reference-tx-in-redeemer-file $marketRedeemerFile \
   --mint "-1 ${bidBeacon} + -1 ${policyBeacon} + -1 ${bidderId}" \
-  --mint-tx-in-reference e6573f7aef914f388bf792e28fdb6af3d2acde3e7b1070484044fb84bee3fa6d#0 \
+  --mint-tx-in-reference d725ebf0adcc114251b993389032e4d67bfbdcaeaeb368edf540877d86562167#0 \
   --mint-plutus-script-v2 \
   --mint-reference-tx-in-redeemer-file $beaconRedeemerFile \
   --policy-id $beaconPolicyId \
@@ -71,6 +73,6 @@ cardano-cli transaction sign \
   --testnet-magic 1 \
   --out-file "${tmpDir}tx.signed"
 
-cardano-cli transaction submit \
-  --testnet-magic 1 \
+cardano-aftermarket submit \
+  --testnet \
   --tx-file "${tmpDir}tx.signed"

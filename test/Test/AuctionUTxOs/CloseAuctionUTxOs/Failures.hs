@@ -261,7 +261,7 @@ beaconFailure3 = do
       , extraKeyWitnesses = [sellerPubKey]
       }
 
--- | Close a single invalid Auction UTxO. AcceptBid is used to spend the UTxO.
+-- | Close a single invalid Auction UTxO. AcceptSpotBid is used to spend the UTxO.
 beaconFailure4 :: MonadEmulator m => m ()
 beaconFailure4 = do
   let -- Seller Info
@@ -314,18 +314,18 @@ beaconFailure4 = do
             { inputId = auctionRef
             , inputWitness = 
                 SpendWithPlutusReference aftermarketRef InlineDatum $ 
-                  toRedeemer AcceptBid
+                  toRedeemer AcceptSpotBid
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       , extraKeyWitnesses = [sellerPubKey]
       }
 
@@ -428,7 +428,7 @@ approvalFailure1 = do
 -------------------------------------------------
 -- Datum Failures
 -------------------------------------------------
--- | Close a UTxO with a BidDatum.
+-- | Close a UTxO with a SpotBidDatum.
 datumFailure1 :: MonadEmulator m => m ()
 datumFailure1 = do
   let -- Seller Info
@@ -450,7 +450,7 @@ datumFailure1 = do
       bidderCred = PV2.PubKeyCredential bidderPubKey
 
       -- Bid Info
-      bidDatum = unsafeCreateBidDatum $ NewBidInfo
+      bidDatum = unsafeCreateSpotBidDatum $ NewSpotBidInfo
         { nftPolicyId = testTokenSymbol
         , bidderCredential = bidderCred
         , nftNames = 
@@ -467,7 +467,7 @@ datumFailure1 = do
   -- Try to create the Bid UTxO.
   void $ transact bidderPersonalAddr [refScriptAddress] [bidderPayPrivKey] $
     emptyTxParams
-      { tokens = flip map [bidDatum] $ \BidDatum{..} ->
+      { tokens = flip map [bidDatum] $ \SpotBidDatum{..} ->
           TokenMint
             { mintTokens = 
                 [ ("Bid", 1)
@@ -478,7 +478,7 @@ datumFailure1 = do
             , mintPolicy = toVersionedMintingPolicy beaconScript
             , mintReference = Just beaconsRef
             }
-      , outputs = flip map [bidDatum] $ \datum@BidDatum{bid=Prices bid,..} ->
+      , outputs = flip map [bidDatum] $ \datum@SpotBidDatum{bid=Prices bid,..} ->
           Output
             { outputAddress = aftermarketAddress
             , outputValue = utxoValue (fromIntegral bidDeposit) $ mconcat
@@ -495,14 +495,14 @@ datumFailure1 = do
       , extraKeyWitnesses = [bidderPubKey]
       }
 
-  auctionUTxOs <- txOutRefsAndDatumsAtAddress @BidDatum aftermarketAddress
+  auctionUTxOs <- txOutRefsAndDatumsAtAddress @SpotBidDatum aftermarketAddress
 
   -- Try to close the Spot UTxO.
   void $ transact sellerPersonalAddr [aftermarketAddress,refScriptAddress] [sellerPayPrivKey]
     emptyTxParams
       { tokens =
           [ TokenMint
-              { mintTokens = flip concatMap auctionUTxOs $ \(_, Just BidDatum{..}) ->
+              { mintTokens = flip concatMap auctionUTxOs $ \(_, Just SpotBidDatum{..}) ->
                   [ ("Bid", -0)
                   , (unPolicyBeacon $ toPolicyBeacon nftPolicyId, -0)
                   , (unBidderId $ toBidderId bidderCredential, -1)

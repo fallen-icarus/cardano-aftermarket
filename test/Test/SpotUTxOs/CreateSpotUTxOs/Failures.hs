@@ -805,7 +805,7 @@ datumFailure1 = do
         }
 
       -- Bid Info
-      bidDatum = unsafeCreateBidDatum $ NewBidInfo
+      bidDatum = unsafeCreateSpotBidDatum $ NewSpotBidInfo
         { nftPolicyId = testTokenSymbol
         , bidderCredential = sellerCred
         , nftNames = 
@@ -1076,7 +1076,7 @@ datumFailure5 = do
                   , mconcat $ flip map nftNames $ \name -> PV2.singleton nftPolicyId name 1
                   ]
               , outputDatum = OutputDatum $ toDatum $
-                  spotDatum & #paymentObserverHash .~ ""
+                  spotDatum & #aftermarketObserverHash .~ ""
               , outputReferenceScript = toReferenceScript Nothing
               }
           ]
@@ -1882,7 +1882,7 @@ tests =
       "Beacons not stored with a valid Market UTxO"
       beaconFailure6
   , scriptMustFailWithError "beaconFailure7"
-      "Bid UTxO not stored with a BidDatum"
+      "Beacons stored with invalid datum"
       beaconFailure7
   , scriptMustFailWithError "beaconFailure8"
       "UTxO has too many category beacons"
@@ -1919,7 +1919,7 @@ tests =
       "Datum has wrong beacon id"
       datumFailure4
   , scriptMustFailWithError "datumFailure5"
-      "Datum has wrong payment observer hash"
+      "Datum has wrong aftermarket observer hash"
       datumFailure5
   , scriptMustFailWithError "datumFailure6"
       "NFTs cannot be protocol beacons"

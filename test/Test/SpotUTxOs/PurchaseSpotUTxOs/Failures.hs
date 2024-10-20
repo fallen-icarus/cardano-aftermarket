@@ -101,11 +101,11 @@ beaconFailure1 = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
       , outputs = flip map spotUTxOs $ \(ref, Just SpotDatum{salePrice=Prices salePrice,..}) ->
@@ -118,7 +118,7 @@ beaconFailure1 = do
             , outputDatum = OutputDatum $ toDatum $ PaymentDatum (BeaconId beaconCurrencySymbol,ref)
             , outputReferenceScript = toReferenceScript Nothing
             }
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       }
 
 -- | When purchasing a Spot UTxO, do not burn the beacons. The beacon script is executed as a
@@ -209,11 +209,11 @@ beaconFailure2 = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           , Withdrawal
               { withdrawalCredential = PV2.ScriptCredential $ scriptHash beaconScript
@@ -233,7 +233,7 @@ beaconFailure2 = do
             , outputDatum = OutputDatum $ toDatum $ PaymentDatum (BeaconId beaconCurrencySymbol,ref)
             , outputReferenceScript = toReferenceScript Nothing
             }
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       }
 
 -- | When purchasing a Spot UTxO, do not burn the beacons. The beacon script is executed as a
@@ -324,11 +324,11 @@ beaconFailure3 = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           , Withdrawal
               { withdrawalCredential = PV2.ScriptCredential $ scriptHash beaconScript
@@ -348,7 +348,7 @@ beaconFailure3 = do
             , outputDatum = OutputDatum $ toDatum $ PaymentDatum (BeaconId beaconCurrencySymbol,ref)
             , outputReferenceScript = toReferenceScript Nothing
             }
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       }
 
 -- | When purchasing a Spot UTxO, do not burn all of the beacons. The beacon script is executed with
@@ -439,11 +439,11 @@ beaconFailure4 = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
       , outputs = flip map spotUTxOs $ \(ref, Just SpotDatum{salePrice=Prices salePrice,..}) ->
@@ -456,7 +456,7 @@ beaconFailure4 = do
             , outputDatum = OutputDatum $ toDatum $ PaymentDatum (BeaconId beaconCurrencySymbol,ref)
             , outputReferenceScript = toReferenceScript Nothing
             }
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       }
 
 -- | When purchasing a Spot UTxO, do not burn all of the beacons. The beacon script is executed with
@@ -547,11 +547,11 @@ beaconFailure5 = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
       , outputs = flip map spotUTxOs $ \(ref, Just SpotDatum{salePrice=Prices salePrice,..}) ->
@@ -564,7 +564,7 @@ beaconFailure5 = do
             , outputDatum = OutputDatum $ toDatum $ PaymentDatum (BeaconId beaconCurrencySymbol,ref)
             , outputReferenceScript = toReferenceScript Nothing
             }
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       }
 
 -- | When purchasing a Spot UTxO, mint extra beacons using BurnBeacons.
@@ -655,11 +655,11 @@ beaconFailure6 = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
       , outputs = flip map spotUTxOs $ \(ref, Just SpotDatum{salePrice=Prices salePrice,..}) ->
@@ -672,7 +672,7 @@ beaconFailure6 = do
             , outputDatum = OutputDatum $ toDatum $ PaymentDatum (BeaconId beaconCurrencySymbol,ref)
             , outputReferenceScript = toReferenceScript Nothing
             }
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       }
 
 -- | Purchase multiple valid Spot UTxOs that are located at different addresses, but only burn some
@@ -823,11 +823,11 @@ beaconFailure7 = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
       , outputs = flip map spotUTxOs $ \(ref, Just SpotDatum{salePrice=Prices salePrice,..}) ->
@@ -840,7 +840,7 @@ beaconFailure7 = do
             , outputDatum = OutputDatum $ toDatum $ PaymentDatum (BeaconId beaconCurrencySymbol,ref)
             , outputReferenceScript = toReferenceScript Nothing
             }
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       }
 
 -- | Try to purchase a single invalid Spot UTxO. 
@@ -918,11 +918,11 @@ beaconFailure8 = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
       , outputs = flip map spotUTxOs $ \(ref, Just SpotDatum{salePrice=Prices salePrice,..}) ->
@@ -935,7 +935,7 @@ beaconFailure8 = do
             , outputDatum = OutputDatum $ toDatum $ PaymentDatum (BeaconId beaconCurrencySymbol,ref)
             , outputReferenceScript = toReferenceScript Nothing
             }
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       }
 
 -------------------------------------------------
@@ -1029,11 +1029,11 @@ paymentValueFailure1 = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
       , outputs = flip map spotUTxOs $ \(ref, Just SpotDatum{salePrice=Prices salePrice,..}) ->
@@ -1046,7 +1046,7 @@ paymentValueFailure1 = do
             , outputDatum = OutputDatum $ toDatum $ PaymentDatum (BeaconId beaconCurrencySymbol,ref)
             , outputReferenceScript = toReferenceScript Nothing
             }
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       }
 
 -- | The payment output does not have enough of the assets from the sale price. Ada is not part of the
@@ -1138,11 +1138,11 @@ paymentValueFailure2 = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
       , outputs = flip map spotUTxOs $ \(ref, Just SpotDatum{salePrice=Prices salePrice,..}) ->
@@ -1155,7 +1155,7 @@ paymentValueFailure2 = do
             , outputDatum = OutputDatum $ toDatum $ PaymentDatum (BeaconId beaconCurrencySymbol,ref)
             , outputReferenceScript = toReferenceScript Nothing
             }
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       }
 
 -- | The payment output does not have the sale deposit. Ada is not part of the sale price.
@@ -1246,11 +1246,11 @@ paymentValueFailure3 = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
       , outputs = flip map spotUTxOs $ \(ref, Just SpotDatum{salePrice=Prices salePrice,..}) ->
@@ -1263,7 +1263,7 @@ paymentValueFailure3 = do
             , outputDatum = OutputDatum $ toDatum $ PaymentDatum (BeaconId beaconCurrencySymbol,ref)
             , outputReferenceScript = toReferenceScript Nothing
             }
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       }
 
 -- | The payment output does not have all of the required assets from the sale price. Ada is part of
@@ -1404,11 +1404,11 @@ paymentValueFailure4 = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
       , outputs = flip map spotUTxOs $ \(ref, Just SpotDatum{salePrice=Prices salePrice,..}) ->
@@ -1421,7 +1421,7 @@ paymentValueFailure4 = do
             , outputDatum = OutputDatum $ toDatum $ PaymentDatum (BeaconId beaconCurrencySymbol,ref)
             , outputReferenceScript = toReferenceScript Nothing
             }
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       }
 
 -------------------------------------------------
@@ -1514,11 +1514,11 @@ paymentDatumFailure1 = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
       , outputs = flip map spotUTxOs $ \(ref, Just SpotDatum{salePrice=Prices salePrice,..}) ->
@@ -1531,7 +1531,7 @@ paymentDatumFailure1 = do
             , outputDatum = OutputDatum $ toDatum $ PaymentDatum (BeaconId "",ref)
             , outputReferenceScript = toReferenceScript Nothing
             }
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       }
 
 -- | The payment output has the wrong output reference in the PaymentDatum.
@@ -1621,11 +1621,11 @@ paymentDatumFailure2 = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
       , outputs = flip map spotUTxOs $ \(_, Just SpotDatum{salePrice=Prices salePrice,..}) ->
@@ -1639,7 +1639,7 @@ paymentDatumFailure2 = do
                 PaymentDatum (BeaconId beaconCurrencySymbol,beaconsRef)
             , outputReferenceScript = toReferenceScript Nothing
             }
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       }
 
 -- | The payment output does not have an inline PaymentDatum.
@@ -1729,11 +1729,11 @@ paymentDatumFailure3 = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
       , outputs = flip map spotUTxOs $ \(ref, Just SpotDatum{salePrice=Prices salePrice,..}) ->
@@ -1747,7 +1747,7 @@ paymentDatumFailure3 = do
                 PaymentDatum (BeaconId beaconCurrencySymbol,ref)
             , outputReferenceScript = toReferenceScript Nothing
             }
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       }
 
 -- | The payment output does not have a datum.
@@ -1837,11 +1837,11 @@ paymentDatumFailure4 = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
       , outputs = flip map spotUTxOs $ \(_, Just SpotDatum{salePrice=Prices salePrice,..}) ->
@@ -1854,7 +1854,7 @@ paymentDatumFailure4 = do
             , outputDatum = NoOutputDatum
             , outputReferenceScript = toReferenceScript Nothing
             }
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       }
 
 -------------------------------------------------
@@ -1947,11 +1947,11 @@ paymentAddressFailure1 = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
       , outputs = flip map spotUTxOs $ \(ref, Just SpotDatum{salePrice=Prices salePrice,..}) ->
@@ -1964,7 +1964,7 @@ paymentAddressFailure1 = do
             , outputDatum = OutputDatum $ toDatum $ PaymentDatum (BeaconId beaconCurrencySymbol,ref)
             , outputReferenceScript = toReferenceScript Nothing
             }
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       }
 
 -------------------------------------------------
@@ -2108,11 +2108,11 @@ orderFailure1 = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
       , outputs = flip map (reverse spotUTxOs) $ \(ref, Just SpotDatum{salePrice=Prices salePrice,..}) ->
@@ -2125,7 +2125,7 @@ orderFailure1 = do
             , outputDatum = OutputDatum $ toDatum $ PaymentDatum (BeaconId beaconCurrencySymbol,ref)
             , outputReferenceScript = toReferenceScript Nothing
             }
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       }
 
 -- | When purchasing multiple Spot UTxOs, the first payment output is invalid.
@@ -2250,11 +2250,11 @@ orderFailure2 = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
       , outputs = flip map (zip spotUTxOs [(1::Int)..]) $ 
@@ -2279,7 +2279,7 @@ orderFailure2 = do
                 , outputDatum = OutputDatum $ toDatum $ PaymentDatum (BeaconId beaconCurrencySymbol,ref)
                 , outputReferenceScript = toReferenceScript Nothing
                 }
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       }
 
 -- | When purchasing multiple Spot UTxOs, the second payment output is invalid.
@@ -2404,11 +2404,11 @@ orderFailure3 = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
       , outputs = flip map (zip spotUTxOs [(1::Int)..]) $ 
@@ -2433,7 +2433,7 @@ orderFailure3 = do
                 , outputDatum = OutputDatum $ toDatum $ PaymentDatum (BeaconId beaconCurrencySymbol,ref)
                 , outputReferenceScript = toReferenceScript Nothing
                 }
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       }
 
 -- | When purchasing multiple Spot UTxOs, the first payment output is invalid. There is an unrelated
@@ -2559,11 +2559,11 @@ orderFailure4 = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
       , outputs = mconcat
@@ -2595,7 +2595,7 @@ orderFailure4 = do
                 , outputReferenceScript = toReferenceScript Nothing
                 }
           ]
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       }
 
 -- | When purchasing multiple Spot UTxOs, the second payment output is invalid. There is an unrelated
@@ -2721,11 +2721,11 @@ orderFailure5 = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
       , outputs = mconcat
@@ -2757,7 +2757,7 @@ orderFailure5 = do
                 , outputReferenceScript = toReferenceScript Nothing
                 }
           ]
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       }
 
 -------------------------------------------------
@@ -2785,7 +2785,7 @@ inputTypeFailure1 = do
       bidderCred = PV2.PubKeyCredential bidderPubKey
 
       -- Bid Info
-      bidDatum = unsafeCreateBidDatum $ NewBidInfo
+      bidDatum = unsafeCreateSpotBidDatum $ NewSpotBidInfo
         { nftPolicyId = testTokenSymbol
         , bidderCredential = bidderCred
         , nftNames = 
@@ -2805,7 +2805,7 @@ inputTypeFailure1 = do
     emptyTxParams
       { tokens =
           [ TokenMint
-              { mintTokens = flip concatMap [bidDatum] $ \BidDatum{..} ->
+              { mintTokens = flip concatMap [bidDatum] $ \SpotBidDatum{..} ->
                   [ ("Bid", 1)
                   , (unPolicyBeacon $ toPolicyBeacon nftPolicyId, 1)
                   , (unBidderId $ toBidderId bidderCredential, 1)
@@ -2815,7 +2815,7 @@ inputTypeFailure1 = do
               , mintReference = Just beaconsRef
               }
           ]
-      , outputs = flip map [bidDatum] $ \datum@BidDatum{bid=Prices bid,..} ->
+      , outputs = flip map [bidDatum] $ \datum@SpotBidDatum{bid=Prices bid,..} ->
           Output
             { outputAddress = aftermarketAddress
             , outputValue = utxoValue (fromIntegral bidDeposit) $ mconcat
@@ -2832,12 +2832,12 @@ inputTypeFailure1 = do
       , extraKeyWitnesses = [bidderPubKey]
       }
 
-  bidUTxOs <- txOutRefsAndDatumsAtAddress @BidDatum aftermarketAddress
+  bidUTxOs <- txOutRefsAndDatumsAtAddress @SpotBidDatum aftermarketAddress
 
   -- Try to accept the Bid UTxO.
   void $ transact sellerPersonalAddr [aftermarketAddress,refScriptAddress] [sellerPayPrivKey]
     emptyTxParams
-      { tokens = flip map bidUTxOs $ \(_, Just BidDatum{..}) -> 
+      { tokens = flip map bidUTxOs $ \(_, Just SpotBidDatum{..}) -> 
           TokenMint
             { mintTokens = 
                 [ ("Bid", -1)
@@ -2855,7 +2855,7 @@ inputTypeFailure1 = do
                 SpendWithPlutusReference aftermarketRef InlineDatum $ 
                   toRedeemer PurchaseSpot
             }
-      , outputs = flip map bidUTxOs $ \(ref, Just BidDatum{..}) ->
+      , outputs = flip map bidUTxOs $ \(ref, Just SpotBidDatum{..}) ->
           Output
             { outputAddress = toCardanoApiAddress paymentAddress
             , outputValue = utxoValue (fromIntegral bidDeposit) $ mconcat
@@ -2867,14 +2867,14 @@ inputTypeFailure1 = do
             }
       , withdrawals =
           [ Withdrawal
-              { withdrawalCredential = PV2.ScriptCredential paymentObserverScriptHash
+              { withdrawalCredential = PV2.ScriptCredential aftermarketObserverScriptHash
               , withdrawalAmount = 0
               , withdrawalWitness = 
-                  StakeWithPlutusReference paymentObserverRef $ 
-                    toRedeemer $ ObservePayment $ BeaconId beaconCurrencySymbol
+                  StakeWithPlutusReference aftermarketObserverRef $ 
+                    toRedeemer $ ObserveAftermarket $ BeaconId beaconCurrencySymbol
               }
           ]
-      , referenceInputs = [paymentObserverRef,beaconsRef,aftermarketRef]
+      , referenceInputs = [aftermarketObserverRef,beaconsRef,aftermarketRef]
       , extraKeyWitnesses = [sellerPubKey]
       }
 

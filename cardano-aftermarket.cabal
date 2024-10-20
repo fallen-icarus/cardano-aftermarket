@@ -63,7 +63,18 @@ test-suite cardano-aftermarket-tests
   main-is: Test.hs
   hs-source-dirs: test
   other-modules:
-      Test.AuctionUTxOs
+      Test.AcceptedBidUTxOs
+    , Test.AcceptedBidUTxOs.ClaimAcceptedBidUTxOs
+    , Test.AcceptedBidUTxOs.ClaimAcceptedBidUTxOs.Benchmarks
+    , Test.AcceptedBidUTxOs.ClaimAcceptedBidUTxOs.Failures
+    , Test.AcceptedBidUTxOs.ClaimAcceptedBidUTxOs.Regressions
+    , Test.AcceptedBidUTxOs.CreateAcceptedBidUTxOs
+    , Test.AcceptedBidUTxOs.CreateAcceptedBidUTxOs.Failures
+    , Test.AcceptedBidUTxOs.UnlockAcceptedBidUTxOs
+    , Test.AcceptedBidUTxOs.UnlockAcceptedBidUTxOs.Benchmarks
+    , Test.AcceptedBidUTxOs.UnlockAcceptedBidUTxOs.Failures
+    , Test.AcceptedBidUTxOs.UnlockAcceptedBidUTxOs.Regressions
+    , Test.AuctionUTxOs
     , Test.AuctionUTxOs.CloseAuctionUTxOs
     , Test.AuctionUTxOs.CloseAuctionUTxOs.Benchmarks
     , Test.AuctionUTxOs.CloseAuctionUTxOs.Failures
@@ -77,23 +88,40 @@ test-suite cardano-aftermarket-tests
     , Test.AuctionUTxOs.UpdateAuctionUTxOs.Failures
     , Test.AuctionUTxOs.UpdateAuctionUTxOs.Regressions
     , Test.Beacons
-    , Test.BidUTxOs
-    , Test.BidUTxOs.AcceptBidUTxOs
-    , Test.BidUTxOs.AcceptBidUTxOs.Benchmarks
-    , Test.BidUTxOs.AcceptBidUTxOs.Failures
-    , Test.BidUTxOs.AcceptBidUTxOs.Regressions
-    , Test.BidUTxOs.CloseBidUTxOs
-    , Test.BidUTxOs.CloseBidUTxOs.Benchmarks
-    , Test.BidUTxOs.CloseBidUTxOs.Failures
-    , Test.BidUTxOs.CloseBidUTxOs.Regressions
-    , Test.BidUTxOs.CreateBidUTxOs
-    , Test.BidUTxOs.CreateBidUTxOs.Benchmarks
-    , Test.BidUTxOs.CreateBidUTxOs.Failures
-    , Test.BidUTxOs.CreateBidUTxOs.Regressions
-    , Test.BidUTxOs.UpdateBidUTxOs
-    , Test.BidUTxOs.UpdateBidUTxOs.Benchmarks
-    , Test.BidUTxOs.UpdateBidUTxOs.Failures
-    , Test.BidUTxOs.UpdateBidUTxOs.Regressions
+    , Test.ClaimBidUTxOs
+    , Test.ClaimBidUTxOs.AcceptClaimBidUTxOs
+    , Test.ClaimBidUTxOs.AcceptClaimBidUTxOs.Benchmarks
+    , Test.ClaimBidUTxOs.AcceptClaimBidUTxOs.Failures
+    , Test.ClaimBidUTxOs.AcceptClaimBidUTxOs.Regressions
+    , Test.ClaimBidUTxOs.CloseClaimBidUTxOs
+    , Test.ClaimBidUTxOs.CloseClaimBidUTxOs.Benchmarks
+    , Test.ClaimBidUTxOs.CloseClaimBidUTxOs.Failures
+    , Test.ClaimBidUTxOs.CloseClaimBidUTxOs.Regressions
+    , Test.ClaimBidUTxOs.CreateClaimBidUTxOs
+    , Test.ClaimBidUTxOs.CreateClaimBidUTxOs.Benchmarks
+    , Test.ClaimBidUTxOs.CreateClaimBidUTxOs.Failures
+    , Test.ClaimBidUTxOs.CreateClaimBidUTxOs.Regressions
+    , Test.ClaimBidUTxOs.UpdateClaimBidUTxOs
+    , Test.ClaimBidUTxOs.UpdateClaimBidUTxOs.Benchmarks
+    , Test.ClaimBidUTxOs.UpdateClaimBidUTxOs.Failures
+    , Test.ClaimBidUTxOs.UpdateClaimBidUTxOs.Regressions
+    , Test.SpotBidUTxOs
+    , Test.SpotBidUTxOs.AcceptSpotBidUTxOs
+    , Test.SpotBidUTxOs.AcceptSpotBidUTxOs.Benchmarks
+    , Test.SpotBidUTxOs.AcceptSpotBidUTxOs.Failures
+    , Test.SpotBidUTxOs.AcceptSpotBidUTxOs.Regressions
+    , Test.SpotBidUTxOs.CloseSpotBidUTxOs
+    , Test.SpotBidUTxOs.CloseSpotBidUTxOs.Benchmarks
+    , Test.SpotBidUTxOs.CloseSpotBidUTxOs.Failures
+    , Test.SpotBidUTxOs.CloseSpotBidUTxOs.Regressions
+    , Test.SpotBidUTxOs.CreateSpotBidUTxOs
+    , Test.SpotBidUTxOs.CreateSpotBidUTxOs.Benchmarks
+    , Test.SpotBidUTxOs.CreateSpotBidUTxOs.Failures
+    , Test.SpotBidUTxOs.CreateSpotBidUTxOs.Regressions
+    , Test.SpotBidUTxOs.UpdateSpotBidUTxOs
+    , Test.SpotBidUTxOs.UpdateSpotBidUTxOs.Benchmarks
+    , Test.SpotBidUTxOs.UpdateSpotBidUTxOs.Failures
+    , Test.SpotBidUTxOs.UpdateSpotBidUTxOs.Regressions
     , Test.Misc
     , Test.Prelude
     , Test.SpotUTxOs
@@ -113,6 +141,7 @@ test-suite cardano-aftermarket-tests
     , Test.SpotUTxOs.UpdateSpotUTxOs.Benchmarks
     , Test.SpotUTxOs.UpdateSpotUTxOs.Failures
     , Test.SpotUTxOs.UpdateSpotUTxOs.Regressions
+
   build-depends:
       cardano-aftermarket
     , data-default

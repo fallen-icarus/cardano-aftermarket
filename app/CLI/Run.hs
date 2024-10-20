@@ -29,6 +29,7 @@ runCommand cmd = case cmd of
   CreateRedeemer newRedeemer file -> runCreateRedeemer newRedeemer file
   BeaconName info output -> runBeaconName info output
   Query query -> runQuery query
+  ConvertTime convert network -> runTimeConversion convert network
   SubmitTx network api txFile ->
     runSubmitTx network api txFile >>= LBS.putStr . encode
   EvaluateTx network api txFile ->
@@ -39,7 +40,7 @@ runExportScript script file = do
   flip whenLeftM_ (\e -> putStrLn $ "There was an error: " <> show e) $
     writeScript file $ case script of
       BeaconScript -> beaconScript
-      PaymentObserverScript -> paymentObserverScript
+      MarketObserverScript -> aftermarketObserverScript
       MarketScript -> aftermarketScript
       ProxyScript -> proxyScript
 
@@ -48,15 +49,25 @@ runCreateDatum (NewSpotDatum newSpotDatum) file =
   writeData file $ unsafeCreateSpotDatum newSpotDatum
 runCreateDatum (NewAuctionDatum newAuctionDatum) file = 
   writeData file $ unsafeCreateAuctionDatum newAuctionDatum
-runCreateDatum (NewBidDatum newBidDatum) file = 
-  writeData file $ unsafeCreateBidDatum newBidDatum
+runCreateDatum (NewSpotBidDatum newSpotBidDatum) file = 
+  writeData file $ unsafeCreateSpotBidDatum newSpotBidDatum
+runCreateDatum (NewClaimBidDatum newClaimBidDatum) file = 
+  writeData file $ unsafeCreateClaimBidDatum newClaimBidDatum
 runCreateDatum (NewPaymentDatum marketRef) file = 
   writeData file $ PaymentDatum (BeaconId beaconCurrencySymbol, marketRef)
+runCreateDatum (NewAcceptedBidDatumManual datum) file = 
+  writeData file $ unsafeCreateAcceptedBidDatum datum
+runCreateDatum (NewAcceptedBidDatumAuto network endpoint bidRef sellerDeposit payAddr) file = do
+  utxo <- runQuerySpecificMarketUTxO network endpoint bidRef
+  case utxo of
+    [MarketUTxO{marketDatum=Just (ClaimBid datum)}] -> 
+      writeData file $ createAcceptedBidDatumFromClaimBid sellerDeposit payAddr datum
+    _ -> error "Not a ClaimBid UTxO."
 
 runCreateRedeemer :: NewRedeemer -> FilePath -> IO ()
 runCreateRedeemer (NewBeaconRedeemer redeemer) file = writeData file redeemer
 runCreateRedeemer (NewMarketRedeemer redeemer) file = writeData file redeemer
-runCreateRedeemer (NewPaymentObserverRedeemer redeemer) file = writeData file redeemer
+runCreateRedeemer (NewMarketObserverRedeemer redeemer) file = writeData file redeemer
 
 runBeaconName :: BeaconName -> Output -> IO ()
 runBeaconName name output = 
@@ -72,6 +83,16 @@ runBeaconName name output =
     displayName = case output of
       Stdout -> putStr
       File file -> writeFile file
+
+runTimeConversion :: ConvertTime -> Network -> IO ()
+runTimeConversion time network =
+    case time of
+      (POSIXTimeToSlot p) -> print $ getSlot $ posixTimeToSlot config p
+      (SlotToPOSIXTime s) -> print $ getPOSIXTime $ slotToPOSIXTime config s
+  where
+    config = case network of
+      Mainnet -> mainnetConfig
+      PreProdTestnet -> preprodConfig
 
 runQuery :: Query -> IO ()
 runQuery query = case query of
